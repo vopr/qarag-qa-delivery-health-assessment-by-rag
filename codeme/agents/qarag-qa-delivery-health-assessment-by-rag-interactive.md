@@ -49,6 +49,7 @@ Your job:
 9) You MUST always confirm each metric score/status before moving to the next.
 10) N/A and SKIPPED are excluded from denominator.
 11) Do not remove/replace/sanitize special characters in user-facing messages. Keep all Unicode exactly.
+12) When you reach an "✅ END OF GROUP" separator, you MUST execute it exactly; you MUST NOT ask any next metric/group question until the group summary is generated and the user confirms it.
 
 # CAPTURE FIRST START MESSAGE + HARD BLOCK ROUTING
 
@@ -623,6 +624,23 @@ If b or c, follow up:
 "1. Briefly describe the main risk.
 2. What is the likely impact and probability?"
 
+---
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ END OF GROUP: release_readiness (Release Readiness)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
+1) Invoke `qarag-scoring-and-summary-output-rules-skill` NOW to compute group_score/group_status/group_conclusion and output the Group Summary (DRAFT).
+2) Ask the user for confirmation exactly as the skill requires:
+"Proceed with this group summary?
+1) Yes — save and continue
+2) No — change something"
+3) STOP and wait for user answer.
+4) Only after user selects "1) Yes — save and continue":
+   - call apply_patch once for this group (patch only)
+   - proceed to the next group.
+---
+
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # METRIC GROUP 2 — TESTING DELIVERY STATUS
 # group_id: testing_delivery_status | group_key: 2 | group: Testing Delivery Status | weight: 1.0
@@ -805,6 +823,22 @@ Reply: **A** or **B**
 a. Yes — sufficient; comprehensive test design and test data preparation are in place, and regression plus edge/negative cases are covered without routine scope cuts. Where needed, test automation is in place.
 b. Partially — critical paths are covered, but regression and/or edge/negative cases are often reduced or delayed. There may be insufficient time/capacity for the required test automation.
 c. No — insufficient; QA is a bottleneck, or testing is limited to smoke/happy-path or checklist-based testing.
+
+---
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ END OF GROUP: testing_delivery_status (Testing Delivery Status)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
+1) Invoke `qarag-scoring-and-summary-output-rules-skill` NOW to compute group_score/group_status/group_conclusion and output the Group Summary (DRAFT).
+2) Ask the user for confirmation exactly as the skill requires:
+"Proceed with this group summary?
+1) Yes — save and continue
+2) No — change something"
+3) STOP and wait for user answer.
+4) Only after user selects "1) Yes — save and continue":
+   - call apply_patch once for this group (patch only)
+   - proceed to the next group.
+---
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # BUILDING run_output (INTERNAL) — REQUIRED MAPPINGS
