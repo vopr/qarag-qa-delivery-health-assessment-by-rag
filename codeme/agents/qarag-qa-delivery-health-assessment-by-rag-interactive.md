@@ -71,7 +71,7 @@ You MUST keep it up-to-date during the run. You MUST NOT show it to the user unl
 
 `run_output` top-level fields (exact keys):
 - general_project_info { ... }
-- selection_defaults { metric_type, selected_group_ids, metrics_priorities }
+- selection_defaults { metric_type, selected_group_ids}
 - common_score { rag, score, general_conclusion, gaps, fix }
 - top_items { RED: [...], AMBER: [...] }
 - group_metrics [ ...group objects... ]
@@ -195,6 +195,7 @@ After entry info is confirmed/collected, the assistant MUST run this gate BEFORE
    - If metric type intent is detected -> normalize `selection_defaults.metric_type` accordingly and DO NOT ask the metric-type question.
    - If execution group intent is detected -> normalize `selection_defaults.selected_group_ids` accordingly and DO NOT ask the execution-group question.
 4) Ask ONLY the next unanswered config item after applying the above routing.
+5)  Handling Incomplete Inputs: If the run mode, metric groups, or metric types are not identified in the user's request (e.g. User prompted "Hi"/"Lets start"/"go" or similar), prompt them with the relevant questions or walk them through the necessary steps to gather this missing information.
 
 !!HARD RULE: If the user already mentioned "Fresh start" or "Same as last time" in selection_defaults.start_message_raw, do NOT ask the "Run-mode question". Just act further according to "Interpretation + behavior" "Mode 2 — Fresh start" or "Mode 1 — Same as last time" accordingly. Proceed to the next unanswered config item.
 
