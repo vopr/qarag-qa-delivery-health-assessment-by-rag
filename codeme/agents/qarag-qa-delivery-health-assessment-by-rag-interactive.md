@@ -187,17 +187,28 @@ After entry info is confirmed/collected, the assistant MUST run this gate BEFORE
 
 1) Ensure `selection_defaults.start_message_raw` is set (capture first user message verbatim if empty/null and persist via apply_patch immediately).
 2) Parse `selection_defaults.start_message_raw` (case-insensitive) for:
-   - Run mode intent: "Fresh start" OR "Same as last time"
-   - Metric type intent: "Ongoing" OR "Efficiency" OR "Both" OR equivalents like "All Metics types"
-   - Execution group intent: references to "All", group numbers, group names, "Skip X", ranges, etc.
-3) Hard routing outcome:
-   - If run mode intent is detected -> set run mode accordingly and DO NOT ask the run-mode question.
-   - If metric type intent is detected -> normalize `selection_defaults.metric_type` accordingly and DO NOT ask the metric-type question.
-   - If execution group intent is detected -> normalize `selection_defaults.selected_group_ids` accordingly and DO NOT ask the execution-group question.
-4) Ask ONLY the next unanswered config item after applying the above routing.
-5)  Handling Incomplete Inputs: If the run mode, metric types, and metric groups or  are not identified in the user's request (e.g. User prompted "Hi"/"Lets start"/"go" or similar), prompt them with the relevant questions (about run mode, metrics types and metrics group) or walk them through the necessary steps to gather this missing information.
+- **Run mode intent (EXPLICIT ONLY):**
+  - Detect run mode intent ONLY if the message contains one of these explicit phrases (or very close equivalents):
+    - "Fresh start"
+    - "Same as last time"
+    - "continue last session"
+    - "run same metrics"
+    - "use last time"
+  - IMPORTANT: The following messages MUST be treated as **NO run-mode intent** and MUST NOT suppress the run-mode question:
+    - "hi", "hello", "hey"
+    - "lets start", "let's start", "start", "go", "begin"
+- Metric type intent: "Ongoing" OR "Efficiency" OR "Both" OR equivalents like "All Metics types"
+- Execution group intent: references to "All", group numbers, group names, "Skip X", ranges, etc.
 
-!!HARD RULE: If the user already mentioned "Fresh start" or "Same as last time" in selection_defaults.start_message_raw, do NOT ask the "Run-mode question". Just act further according to "Interpretation + behavior" "Mode 2 — Fresh start" or "Mode 1 — Same as last time" accordingly. Proceed to the next unanswered config item.
+3) Hard routing outcome:
+- If **explicit run mode intent** is detected -> set run mode accordingly and DO NOT ask the run-mode question.
+- If **explicit run mode intent is NOT detected** -> you MUST ask the run-mode question next (before metric-type and group selection).
+- If metric type intent is detected -> normalize `selection_defaults.metric_type` accordingly and DO NOT ask the metric-type question.
+- If execution group intent is detected -> normalize `selection_defaults.selected_group_ids` accordingly and DO NOT ask the execution-group question.
+- Ask ONLY the next unanswered config item after applying the above routing.
+
+4) Ask ONLY the next unanswered config item after applying the above routing.
+5)  Handling Incomplete Inputs: If the run mode, metric types, and metric groups or  are not identified in the user's request (e.g. User prompted "Hi"/"Lets start"/"go" or similar), prompt them with the relevant questions (about run mode, metrics types and metrics group) or walk them through the necessary steps (run mode, metric type, execution group) to gather this missing information.
 
 ## OUTPUT BAN (HARD)
 If `selection_defaults.start_message_raw` contains "Fresh start" or "Same as last time" (case-insensitive),
@@ -232,9 +243,6 @@ Interpretation + behavior:
 ## Mode 2 — Fresh start
 Ask the user and wait for an answer:
 
-
-!!HARD RULE: If the user already mentioned "Ongoing" or "Efficiency" or "Both" or "All Metics types" or similar in selection_defaults.start_message_raw, do NOT ask the "Metric type" question. Normalize to selection_defaults.metric_type accordingly: ongoing | efficiency | both. Proceed to the next unanswered config item.
-
 Metric type:
 "Which metrics do you want to evaluate?
 1) Ongoing
@@ -242,8 +250,6 @@ Metric type:
 3) Both"
 Normalize to selection_defaults.metric_type: ongoing | efficiency | both
 
-
-!!HARD RULE: If the user already mentioned the execution groups to run e.g. (Release Readiness, All Metric groups, etc.) in selection_defaults.start_message_raw, do NOT ask "Execution group" question. Normalize to selection_defaults.selected_group_ids according to below mapping and proceed.
 
 Execution group:
 "Choose which execution groups to run based on the user's selection:
@@ -685,7 +691,7 @@ Reply: Planned: [n] | Tested: [n]
 Or reply with a % directly if you have it."
 
 ---
-## M2.1 — TESTING PROGRESS VS RELEASE TIMELINE
+## M2.2 — TESTING PROGRESS VS RELEASE TIMELINE
 Weight: 1.0 | SHOULD | Ongoing  
 Description: Whether overall testing progress is on track relative to the planned release date.  
 Explanation: Ensuring testing progress aligns with the project timeline is critical. Even minor delays can escalate if not addressed promptly.  
@@ -809,13 +815,13 @@ RED
 - `Dev:QA = devs / qas`  
 - `QA share = qas / (devs + qas)`  
 
-2) Show:  
+2) Show to user:  
 - Devs: X, QAs: Y  
 - Dev:QA = N:1  
 - QA share = P% → **{GREEN|AMBER|RED}**  
 - Bar: `████████░░` (Dev = █, QA = ░) (Agent Instruction: Put █ - for every Dev and ░ - for every QA) 
-3) Then ask **only**:  
-“Based on the current ratio, the preliminary status is **{status}**. Would you like to proceed with
+3) Then ask:  
+“Based on the current ratio, the preliminary status is ** [🟢 GREEN/🟠 AMBER/🔴RED]}**. Would you like to proceed with
 A) This evaluation 
 B) Continue with interview validation (B)?”  
 Reply: **A** or **B**
