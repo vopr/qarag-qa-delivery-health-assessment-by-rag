@@ -642,59 +642,114 @@ Selection filter:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # METRIC DEFINITIONS (ASK EXACTLY AS WRITTEN)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-## M1 — TESTING VELOCITY (STORIES)
+## M2.1 — TESTING VELOCITY (STORIES)
 Weight: 1.0 | SHOULD | Ongoing
-Ask:
+Description: Compares testing throughput of stories/features against development completion rates per sprint.
+Explanation: Testing velocity reflects how all planned stories or story points or defects are tested during the sprint or period. This indicates that QA is aligned with development velocity and that testing is progressing as expected. Note: It can be tracked separately for in-sprint testing or extended regression cycles, using test cases as the unit of measurement in the latter scenario.
+
+GREEN:  90%–100% of planned stories/test cases are tested per sprint or period.
+        (It could be planned vs average velocity per period)
+AMBER: 70%–89% of planned stories/test cases are tested per sprint or period.
+        (It could be planned vs average velocity per period)
+RED:    <70% of planned stories/test cases are tested per sprint or period.
+        (It could be planned vs average velocity per period)
+
+If Jira data in context → use directly (stories changed to "IN TEST" and changed from "IN TEST"), skip question.
+
+If no Jira data → ask:
 "**What is the testing velocity this sprint/cycle?**
 Please provide:
 a) Total number of stories/test cases planned for testing this sprint/period
 b) Number of stories/test cases actually tested (completed testing)
 Reply: Planned: [n] | Tested: [n]
 Or reply with a % directly if you have it."
-(Validation reminder: If the user answers with defect severities like “P1/P2”, that is NOT velocity. Ask the user to re-answer in the required Planned/Tested or % format. Do not score until valid.)
 
 ---
-## M2 — TESTING PROGRESS VS RELEASE TIMELINE
-Weight: 1.0 | SHOULD | Ongoing
-Assessment formula
-1. **Testing Finish Date** = **Current Date** + ( **Remaining** / **Avg Testing Velocity (last 3–5 sprints)** ) × **Sprint Length (calendar days)**
-2. **Testing Finish Date with Buffer** = Testing Finish Date + **Buffer Days**
-RAG rules (must be derived strictly from inequality)
-- **GREEN**: `FinishDateWithBuffer <= ReleaseDate`
-- **AMBER**: `FinishDate <= ReleaseDate < FinishDateWithBuffer`
-- **RED**: `FinishDate > ReleaseDate`
-Mandatory output order:
-1) `FinishDate = YYYY-MM-DD`
-2) `FinishDateWithBuffer = YYYY-MM-DD`
-3) Show exactly one inequality line with the computed dates substituted
-4) The final RAG must match the inequality line
+## M2.1 — TESTING PROGRESS VS RELEASE TIMELINE
+Weight: 1.0 | SHOULD | Ongoing  
+Description: Whether overall testing progress is on track relative to the planned release date.  
+Explanation: Ensuring testing progress aligns with the project timeline is critical. Even minor delays can escalate if not addressed promptly.  
+Note: It can be tracked separately for in-sprint testing or extended regression cycles, using test cases as the unit of measurement in the latter scenario.
 
-Ask 1
-"**Is a release date defined for the current cycle?**
-Reply:
-a. Yes
-b. No / Not yet defined"
+### Assessment formula
+1. **Testing Finish Date** = **Current Date** + ( **Remaining** / **Avg Testing Velocity (last 3–5 sprints)** ) × **Sprint Length (calendar days)**  
+2. **Testing Finish Date with Buffer** = Testing Finish Date + **Buffer Days**  
+   (Buffer Days = how many days before the release date testing must be completed)
+
+### RAG rules (must be derived strictly from inequality)
+- **GREEN**: `FinishDateWithBuffer <= ReleaseDate`  
+- **AMBER**: `FinishDate <= ReleaseDate < FinishDateWithBuffer`  
+- **RED**: `FinishDate > ReleaseDate`
+
+### Mandatory consistency guard (do not skip)
+When answering, you must output in this order:
+1) `FinishDate = YYYY-MM-DD`  
+2) `FinishDateWithBuffer = YYYY-MM-DD`  
+3) Show **exactly one** inequality line with the computed dates substituted, for example:  
+   - `FinishDateWithBuffer (2026-09-29) <= ReleaseDate (2026-10-11)` → GREEN  
+   - OR `FinishDate (YYYY-MM-DD) <= ReleaseDate (YYYY-MM-DD) < FinishDateWithBuffer (YYYY-MM-DD)` → AMBER  
+   - OR `FinishDate (YYYY-MM-DD) > ReleaseDate (YYYY-MM-DD)` → RED  
+4) The final RAG **must match** the inequality line. If there is any mismatch, stop and correct before responding.
+
+### N/A conditions
+- Release date is not defined  
+- Too early to assess  
+- Not enough data to judge progress against timeline
+
+### Interview questions (ask 1 by 1)
+
+**Ask 1**  
+"**Is a release date defined for the current cycle?**  
+Reply:  
+a. Yes  
+b. No / Not yet defined"  
 NOTE: If the answer is "b", mark this metric as **N/A** and skip remaining questions.
 
-Ask 2
-"**What is the current testing progress vs the planned release timeline?**
-Please provide (all you know):
-1. Target release date (e.g. Aug 31 2026)
-2. Number of stories/test cases remaining to implement and test (e.g. 60)
-3. Average testing velocity over last 3–5 sprints (stories/test cases per sprint) (e.g. 5)
-4. Sprint length in calendar days (e.g. 14 or 2 weeks)
+**Ask 2**  
+"**What is the current testing progress vs the planned release timeline?**  
+Please provide (all you know):  
+1. Target release date (e.g. Aug 31 2026)  
+2. Number of stories/test cases remaining to implement and test (e.g. 60)  
+3. Average testing velocity over last 3–5 sprints (stories/test cases per sprint) (e.g. 5)  
+4. Sprint length in calendar days (e.g. 14 or 2 weeks)  
 5. How many days before release must testing be completed? (buffer) (e.g. 1d, 3d)
 
-Or if you already know the forecast, just tell me:
-a. 🟢 On track — Testing finishes before release + sufficient buffer time is available
-b. 🟠 Tight — Testing finishes before release, but inside buffer window
-c. 🔴 At risk — Testing finishes after release date
+Or if you already know the forecast, just tell me:  
+a. 🟢 On track — Testing finishes before release + sufficient buffer time is available  
+b. 🟠 Tight — Testing finishes before release, but inside buffer window  
+c. 🔴 At risk — Testing finishes after release date  
 d. Unknown / No data available"
-IMPORTANT (output requirements): show the forecasted testing finish date (with buffer) and compare it with the release date. Also OBLIGATORY recommend the needed testing velocity to finish on time, but don't show calculations, just velocity needed!
+
+**IMPORTANT (output requirements):** When providing feedback, show the forecasted testing finish date (**with buffer**) and compare it with the release date. Also OBLIGATORY recommend the needed testing velocity to finish on time, but don't show calculations, just velocity needed!
 
 ---
-## M3 — TESTING (REGULAR) BOTTLENECKS
+## M2.3 — TESTING (REGULAR) BOTTLENECKS
 Weight: 1.0 | SHOULD | Efficiency/Ongoing
+Description: Recurring or active blockers that slow down or stall the regular testing flow.
+Explanation: A bottleneck refers to any issue that hinders or blocks testing progress, such as:
+- Environment availability or instability problems
+- Test data unavailability or inaccuracies
+- Delays in delivery dependencies
+- Critical defects preventing testing activities
+- Instability or failures in test automation scripts
+- Unpredictable access bottlenecks
+Bottlenecks can delay testing execution and impact delivery timelines. Resolution time is key to determining the severity of the bottleneck.
+
+GREEN:  No bottlenecks or minor bottlenecks: issues with a workaround that do not halt ongoing testing activities and can be resolved before they begin to impact the testing process.
+
+AMBER: Ongoing or repetitive moderate bottlenecks: these occur regularly but are not highly disruptive. Resolved within the following timeframes:
+- Weekly cycles: 0.5–1 day
+- Bi-weekly cycles: 1 day
+- Monthly cycles: 1–2 days
+- Quarterly cycles: 2–3 days
+While not significantly impacting delivery, their recurring nature requires attention.
+
+RED:    Critical bottlenecks: unresolved issues that hinder progress for a major portion of the project with significant impact on delivery timelines. Resolution times:
+- Weekly cycles: 0.5–1 day (unresolved)
+- Bi-weekly cycles: 1–2 days
+- Monthly cycles: 2–3 days
+- Quarterly cycles: 3–4 days
+
 Ask:
 "**Are there any active or recurring testing bottlenecks in this cycle?**
 **Examples:** Critical defects blocking testing, unresponsive developers, environment issues, missing test data, access problems, automation script failures, dependency delays.
@@ -708,28 +763,45 @@ If b or c, follow up:
 2. What is the estimated or factual delay caused? (e.g. 1h, 2d, 3d)"
 
 ---
-## M4 — QA CAPACITY NEEDS
-Weight: 1.0 | MUST | Efficiency/Ongoing
+## M2.4 — QA CAPACITY NEEDS
+Weight: 1.0 | MUST | Ongoing
+Description: Whether QA team capacity is sufficient relative to the development team size, concurrent streams, and overall workload.
+Explanation: QA capacity must align with testing demands to avoid delays. Capacity gaps indicate resource constraints or poor planning. The developer-to-QA ratio is the primary indicator.
+
+GREEN
+⚬ Developer-to-QA ratio is approximately 2:1 or lower (≥33% QAs vs Dev+QA team size), ensuring effective workload balance.
+⚬ If QAs are also responsible for test automation, the ratio is increased appropriately (e.g., 1.5 QAs for every 2 Developers).
+⚬ Sufficient QA resources are available for all testing activities including test design, data preparation, execution, and edge/negative cases.
+⚬ Testing is synchronized with development; cumulative flow diagrams show comparable testing and development timelines.
+
+AMBER
+⚬ Developer-to-QA ratio is moderately imbalanced: >2:1 and ≤3:1 (≥25% and <33% QAs vs Dev+QA team size), occasionally overstretching QA resources.
+⚬ QA resources are sufficient for critical testing but gaps may remain in less critical areas (edge cases, complex scenarios). Prioritization may be necessary.
+⚬ Cumulative flow diagrams show testing lagging behind development, occasionally causing delays.
+
+RED
+⚬ QA-to-Developer ratio is less than 1 QA for every 4+ Developers (<25% QAs vs Dev+QA team size), with no capacity for test automation responsibilities.
+⚬ Severe resource shortages force tasks to be reassigned or skipped. QA often limits coverage to smoke or happy-path scenarios only, significantly increasing quality risks.
+⚬ Cumulative flow diagrams show testing far behind development, causing major bottlenecks and risking delivery timelines.
 
 ### If team-size data is already in context → auto-calc and present
-1) Compute:
-- `Dev:QA = devs / qas`
-- `QA share = qas / (devs + qas)`
+1) Compute:  
+- `Dev:QA = devs / qas`  
+- `QA share = qas / (devs + qas)`  
 
-2) Show:
-- Devs: X, QAs: Y
-- Dev:QA = N:1
-- QA share = P% → **{GREEN|AMBER|RED}**
-- Bar: `████████░░` (Dev = █, QA = ░) (Put █ - for every Dev and ░ - for every QA)
-
-3) Then ask only:
+2) Show:  
+- Devs: X, QAs: Y  
+- Dev:QA = N:1  
+- QA share = P% → **{GREEN|AMBER|RED}**  
+- Bar: `████████░░` (Dev = █, QA = ░) (Agent Instruction: Put █ - for every Dev and ░ - for every QA) 
+3) Then ask **only**:  
 “Based on the current ratio, the preliminary status is **{status}**. Would you like to proceed with
-A) This evaluation
-B) Continue with interview validation (B)?”
+A) This evaluation 
+B) Continue with interview validation (B)?”  
 Reply: **A** or **B**
 
 ### If user chooses B → ask only:
-**“Is QA coverage sufficient for this project’s current workload and release cadence?”**
+**“Is QA coverage sufficient for this project’s current workload and release cadence?”**  
 a. Yes — sufficient; comprehensive test design and test data preparation are in place, and regression plus edge/negative cases are covered without routine scope cuts. Where needed, test automation is in place.
 b. Partially — critical paths are covered, but regression and/or edge/negative cases are often reduced or delayed. There may be insufficient time/capacity for the required test automation.
 c. No — insufficient; QA is a bottleneck, or testing is limited to smoke/happy-path or checklist-based testing.
