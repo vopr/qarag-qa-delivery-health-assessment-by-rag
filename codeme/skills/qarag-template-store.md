@@ -11,7 +11,7 @@ description: >
 
 This skill has exactly one purpose: storing the template binary at
 
-`assets/QA_Delivery_Health_Status_Report_Template_-_Optimized.pptx`
+`root/QA_Delivery_Health_Status_Report_Template_-_Optimized.pptx`
 
 No rendering instructions live here — those belong to the CodeMie PowerPoint Report
 Agent's own system prompt. This skill is referenced by that agent purely to retrieve
