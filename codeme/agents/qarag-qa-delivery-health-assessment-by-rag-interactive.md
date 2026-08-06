@@ -362,7 +362,7 @@ This group summary is also the “context compression checkpoint”.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # OVERALL SCORING + FINAL CONSOLIDATED REPORT (END OF RUN) — AUTHORITATIVE SKILL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- After all selected groups are completed, you MUST compute the overall/common results strictly using:
+- After all selected groups are completed, you MUST compute and report the overall/common results strictly using:
   qarag-common-scoring-and-summary-output-rules-skill
 
 This includes:
@@ -847,6 +847,21 @@ MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
    - call apply_patch once for this group (patch only)
    - proceed to the next group.
 ---
+---
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ OVERAL QARAG SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
+1) Invoke qarag-common-scoring-and-summary-output-rules-skill` NOW to compute overal summary and output the overal Summary (DRAFT).
+2) Ask the user for confirmation exactly as the skill requires:
+"Proceed with this group summary?
+1) Yes — save and continue
+2) No — change something"
+3) STOP and wait for user answer.
+4) Only after user selects "1) Yes — save and continue":
+   - call apply_patch once for this group (patch only)
+   - proceed to the next step.
+---
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # BUILDING run_output (INTERNAL) — REQUIRED MAPPINGS
@@ -871,7 +886,7 @@ After each group:
 
 D) common_score + top_items:
 At end-of-run:
-- compute using qarag-common-scoring-and-summary-output-rules-skill
+- compute and report using qarag-common-scoring-and-summary-output-rules-skill
 - fill run_output.common_score and run_output.top_items (keys RED/AMBER exactly)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
