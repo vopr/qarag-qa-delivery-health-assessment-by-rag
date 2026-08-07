@@ -37,6 +37,36 @@ pipeline produced a broken deck.
 
 ---
 
+# Execution Environment Constraints (read before writing any script)
+
+The Python execution sandbox has the following hard restrictions. Violating any of
+these causes an immediate security rejection before the script runs — not a runtime
+error:
+
+- **No shell / subprocess** — never use `subprocess`, `os.system`, `os.popen`, or any
+  shell command. All file operations must be pure Python.
+- **No file deletion** — `os.remove`, `os.unlink`, `shutil.rmtree`, and `pathlib
+  .unlink` are all blocked. Never attempt to delete or pre-clean files. The sandbox
+  workspace is fresh per conversation run; overwriting an existing file (e.g. with
+  `zipfile.ZipFile(..., "w")`) is fine.
+- **No `glob` module** — `import glob` is blocked. Use `os.listdir()` with a list
+  comprehension instead everywhere a glob pattern would be used:
+  ```python
+  # Instead of: glob.glob("unpacked/ppt/slides/slide*.xml")
+  slides = [
+      os.path.join("unpacked", "ppt", "slides", f)
+      for f in os.listdir(os.path.join("unpacked", "ppt", "slides"))
+      if f.startswith("slide") and f.endswith(".xml")
+  ]
+  ```
+- **Template binary cannot be copied via `write_workspace_file`** — that tool is
+  text-only and will corrupt binary content. The template must be delivered into the
+  script as a Base64-encoded string and decoded in-memory (see Step 0).
+- **The only file written to disk should be the final `output.pptx`** — no intermediate
+  `work.pptx`, no staging copies.
+
+---
+
 # Operating modes
 
 ## Mode A — Standalone (render-only)
@@ -90,7 +120,7 @@ The template package is 4 slides. Treat this as ground truth, not something to i
 | 1 | `ppt/slides/slide1.xml` | Executive Summary | Overall-status shape (alt text `"Overall RAG Status"`), rose/radar chart **picture** (alt text `"[Rose Chart for Project Group Metrics Statuses]"`, `r:embed` → `ppt/media/image14.png`), consolidated single-run `Score: [n.nn] / 3` |
 | 2 | `ppt/slides/slide2.xml` | General Categories Scores | **Two plain "category card" shapes** (alt text `"Category Card"`), each a rounded-fill `<p:sp>` with a colored title run and a white conclusion run — this is the template for every included group's card, duplicated the same way as Slide 4 (see below) |
 | 3 | `ppt/slides/slide3.xml` | Top 5 Items (Cross-group) | Two numbered lists (RED / AMBER), one run per placeholder token |
-| 4 | `ppt/slides/slide4.xml` | Group template (`G[N] — [Group Metric name N]`) | **This single slide is the template for every included group** — must be duplicated once per group, not hand-built. Consolidated single-run `Score: [n.nn] / 3   |   RAG: [RAG STATUS]` |
+| 4 | `ppt/slides/slide4.xml` | Group template (`G[N] — [Group Metric name N]`) | **This single slide is the template for every included group** — must be duplicated once per group, not hand-built. Consolidated single-run `Score: [n.nn] / 3   \|   RAG: [RAG STATUS]` |
 
 `ppt/media/` also contains two `.emf` images used by the master/layout art (logos/
 decoration). **Never open, decode, or re-embed these** — treat them as opaque binary
@@ -113,25 +143,45 @@ just to find them. This optimized version is the one stored in `qarag-template-s
 # RENDER PIPELINE (mandatory sequence)
 
 ## Step 0 — Fetch the template from the skill and unpack
-Resolve the template path first: default to fetching from `qarag-template-store`
-unless the input's `template.source == "user_attachment"` overrides it for this run.
-```python
-import zipfile, shutil, os
 
-# Default: fetch from the qarag-template-store skill's asset store.
-DEFAULT_TEMPLATE = "qarag-template-store/assets/QA_Delivery_Health_Status_Report_Template_-_Optimized.pptx"
-template_path = (
-    input_template["path"]
-    if input_template and input_template.get("source") == "user_attachment"
-    else DEFAULT_TEMPLATE
-)
-if not os.path.exists(template_path):
-    raise FileNotFoundError(
-        f"Template not found at {template_path} — do not fall back to a blank "
-        "presentation; report this as a hard error instead."
+### Phase 0a — Agent side (before writing the render script)
+Use the `skill_file` tool to load the template binary from `qarag-template-store`.
+The skill returns the file content in agent memory. **Do not** attempt to write it to
+the workspace with `write_workspace_file` — that tool is text-only and will corrupt
+the binary. Instead, Base64-encode the raw bytes and embed the encoded string as a
+literal constant `TEMPLATE_B64` at the top of the render script. This is the only
+supported way to deliver the template binary into the sandbox.
+
+If the `skill_file` fetch fails (file not found, tool error), **stop immediately**.
+Do not proceed to write or execute any render script. Report the failure to the user
+and ask them to retry — do not fall back to `Presentation()` with no template under
+any circumstance. The only permitted exception is if the user explicitly says "build
+from scratch without the template" — even then, declare it as a deviation in the
+output.
+
+For a user-attached `.pptx` (`template.source == "user_attachment"`), Base64-encode
+the attachment bytes and inject them the same way.
+
+### Phase 0b — Script side (first executable block of the render script)
+Decode the embedded Base64 string into an in-memory buffer and unpack from there —
+no disk staging, no `shutil.copy`:
+
+```python
+import base64, io, zipfile, os
+
+# TEMPLATE_B64 was injected by the agent in Phase 0a
+template_bytes = base64.b64decode(TEMPLATE_B64)
+
+# Hard-fail guard — catches any accidental empty/missing injection
+if len(template_bytes) < 1000:
+    raise SystemExit(
+        "HARD ERROR: TEMPLATE_B64 decoded to fewer than 1000 bytes — "
+        "the template was not properly injected. "
+        "Do NOT fall back to Presentation() with no template. "
+        "Re-run Phase 0a (re-fetch and re-encode from skill_file) and retry."
     )
-shutil.copy(template_path, "work.pptx")
-with zipfile.ZipFile("work.pptx") as z:
+
+with zipfile.ZipFile(io.BytesIO(template_bytes)) as z:
     z.extractall("unpacked")
 ```
 
@@ -274,12 +324,22 @@ The chart is a static picture, not a native chart object.
   `findings.critical` / `findings.amber`, left blank if not provided (not "TBD" unless
   placeholders are explicitly allowed).
 
-## Step 6 — Repack
-```bash
-cd unpacked && rm -f ../output.pptx && zip -Xr ../output.pptx . && cd ..
+## Step 6 — Repack (Python-native, no subprocess)
+```python
+import zipfile, os
+
+OUTPUT_PPTX = "output.pptx"
+# zipfile.ZipFile opened in "w" mode overwrites silently — no deletion needed
+with zipfile.ZipFile(OUTPUT_PPTX, "w", zipfile.ZIP_DEFLATED) as zout:
+    for root_dir, dirs, files in os.walk("unpacked"):
+        for file in files:
+            abs_path = os.path.join(root_dir, file)
+            arc_name = os.path.relpath(abs_path, "unpacked")
+            zout.write(abs_path, arc_name)
 ```
-Zip from **inside** the unpacked directory (not with a path prefix), and `rm` the old
-output first — leftover deleted parts otherwise survive in the archive.
+Use `ZIP_DEFLATED` compression. Do **not** use `subprocess`, `os.system`, or the
+shell `zip` command — these are blocked in the execution sandbox. Do **not** call
+`os.remove` or `shutil.rmtree` to pre-clean — file deletion is also blocked.
 
 ---
 
