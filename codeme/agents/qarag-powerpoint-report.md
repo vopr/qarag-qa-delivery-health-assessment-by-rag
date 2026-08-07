@@ -130,10 +130,9 @@ The template package is 4 slides. Treat this as ground truth, not something to i
 | 3 | `ppt/slides/slide3.xml` | Top 5 Items (Cross-group) | Two numbered lists (RED / AMBER), one run per placeholder token |
 | 4 | `ppt/slides/slide4.xml` | Group template (`G[N] — [Group Metric name N]`) | **This single slide is the template for every included group** — must be duplicated once per group, not hand-built. Consolidated single-run `Score: [n.nn] / 3   |   RAG: [RAG STATUS]` |
 
-`ppt/media/` also contains two `.emf` images used by the master/layout art (logos/
-decoration). **Never open, decode, or re-embed these** — treat them as opaque binary
-assets and leave their relationships untouched. Any script step that walks "all images
-in the deck" must skip `.emf`.
+`ppt/media/` also contains `image1.png`, a small logo used by the master/layout art.
+Any script step that walks "all images in the deck" must skip this file — treat it as
+an opaque asset and leave its relationship in `slideMaster1.xml.rels` untouched.
 
 **Use the optimized template file, not the original.** The original template's Slide 2
 was built as native PowerPoint SmartArt (`ppt/diagrams/data1.xml` + a graph of
@@ -161,8 +160,8 @@ Call `skill_file` with `{"skill": "qarag-template-store", "path": "assets/QA_Del
 — fetch the **`.b64.txt` companion asset, never the raw `.pptx` directly**. `skill_file`
 serializes its result in `encoding="text"` mode, which corrupts arbitrary binary bytes
 (confirmed in practice: a direct `.pptx` fetch came back with mangled/replacement
-characters partway through, not a clean error). The template is small (~120 KB binary,
-~163 KB as base64), so a single fetch of the `.b64.txt` companion should complete
+characters partway through, not a clean error). The template is small (~22 KB binary,
+~30 KB as base64), so a single fetch of the `.b64.txt` companion should complete
 without hitting the tool's truncation limit — but check the result for a "Tool output
 is truncated" marker before proceeding regardless; if truncation still occurs, that is
 a signal the template has grown and needs re-trimming (see the note on template size
@@ -191,10 +190,10 @@ with open("template.b64.txt", "r") as f:
 # scratch is the single biggest cause of visual drift from the template (wrong
 # theme, wrong fonts, hand-guessed coordinates) — treat it as strictly worse than
 # failing loudly.
-if len(template_bytes) < 50_000:
+if len(template_bytes) < 10_000:
     raise SystemExit(
         f"Template payload is only {len(template_bytes)} bytes after decoding — "
-        "this is not a complete .pptx (expected ~120 KB). The fetch/staging in "
+        "this is not a complete .pptx (expected ~22 KB). The fetch/staging in "
         "Phase 0a likely truncated or failed. STOP: do not proceed to build a "
         "report from scratch with python-pptx. Report this as a hard error instead."
     )
@@ -207,14 +206,14 @@ it's staged as base64 text (safe) and only decoded back to bytes inside the scri
 entirely in memory. No intermediate `work.pptx` copy is written to disk before
 unpacking.
 
-**On template size:** this template was trimmed from ~13 MB to ~120 KB by removing 71
-unused corporate slide layouts and their orphaned background images — the 4 content
-slides only ever used 1 layout and 2 small media files; everything else was dead
-weight inherited from the original export. If the template is ever regenerated from a
-fuller corporate export again, re-apply that trim before re-deploying it to this skill
-— an untrimmed multi-MB template will not survive `skill_file`'s truncation limit
-under any fetch strategy, chunked or not, and there is no reliable workaround at that
-size.
+**On template size:** this template was trimmed from ~13 MB to ~22 KB by removing 71
+unused corporate slide layouts, orphaned background images, empty speaker notes,
+revision tracking metadata, and the preview thumbnail — the 4 content slides only ever
+used 1 layout and 1 small media file; everything else was dead weight. If the template
+is ever regenerated from a fuller corporate export again, re-apply that trim before
+re-deploying it to this skill — an untrimmed multi-MB template will not survive
+`skill_file`'s truncation limit under any fetch strategy, chunked or not, and there is
+no reliable workaround at that size.
 
 ## Step 1 — Structural work FIRST: duplicate the repeatable elements
 Do this **before** writing any group content. Duplicating after editing clones the
@@ -262,15 +261,11 @@ Do all of this with a real OOXML-aware routine (`lxml.etree`, parsed with the co
 namespaces) — never string-concatenate XML, and never round-trip through
 `xml.etree.ElementTree` (it rewrites namespace prefixes and corrupts the package).
 
-## Step 1c — Duplicate the group slide's notes part too
-Slide 4's `.rels` includes a `notesSlide` relationship. If you copy `slide4.xml.rels`
-verbatim for each duplicated group slide (Step 1a), every group slide ends up pointing
-at the *same* notes part — this passes casually but fails structural validation
-("referenced by multiple slides") and corrupts the notes pane per-group. For each
-duplicated group slide: also duplicate its notes part (`notesSlideN.xml` + its own
-`.rels`, registered in `[Content_Types].xml`), and repoint both directions — the new
-notes part's `.rels` must point back at the new slide, and the new slide's `.rels`
-must point at the new notes part, not the original.
+## Step 1c — Notes parts
+The optimized template has no notes infrastructure (no `notesMaster`, no
+`notesSlide` parts, no notes relationships). Do not create or reference notes parts
+when duplicating group slides — slide `.rels` files must not include a `notesSlide`
+relationship.
 
 ## Step 2 — Text substitution, run-level only
 For every text placeholder (`[Project Name]`, `[RAG STATUS]`, `Score: [n.nn] / 3`,
