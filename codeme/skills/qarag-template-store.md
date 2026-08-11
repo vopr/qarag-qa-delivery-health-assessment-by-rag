@@ -77,10 +77,7 @@ exists.
 
 ## Regenerating after an edit
 
-If either file changes, regenerate its `.zb85` companion from the updated file
-(`base64.b85encode(zlib.compress(data, 9))`) and replace it — don't let the plain file
-and its companion drift out of sync. If the template changes structurally (shapes
-added/removed, alt-text markers renamed), re-run `render.py` against it and confirm
+If either file changes, regenerate its `.zb85` companion from the updated file (`base64.b85encode(zlib.compress(data, 9))`) and replace it — don't let the plain file and its companion drift out of sync. If the template changes structurally (shapes added/removed, alt-text markers renamed), re-run `render.py` against it and confirm
 the render still succeeds before redeploying — the chart-shape-synthesis fallback
 above is a good example of a structural change that needed a matching code change,
 not just a re-encode.
