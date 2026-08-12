@@ -6,8 +6,43 @@
 This skill standardizes:
 1) Scoring + aggregation rules (RAG mapping, denominator rules, group score thresholds)
 2) Generic standalone output format and dynamic table population rules
+3) A mandatory user confirmation gate after each group summary (draft → confirm/edit → confirmed)
 
 It must be applied consistently across all metric-group assessor agents.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CONFIRMATION GATE (MANDATORY — NON-NEGOTIABLE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This skill MUST enforce a 2-step handshake for every group summary:
+
+Step A — DRAFT Group Summary (always first):
+- Generate the full group summary using the template below.
+- At the end of the summary, you MUST ask for confirmation using EXACT text (verbatim):
+
+"Proceed with this group summary?
+1) Yes — save and continue
+2) No — change something"
+
+- After asking this question, you MUST STOP and wait for the user's answer.
+- You MUST NOT start the next group, ask the next metric question, or output any other follow-up question in the same message.
+
+Step B — CONFIRMED Group Summary (only after user selects option 1):
+- Re-print the same group summary heading andmark it as confirmed:
+📊 [METRIC GROUP NAME] — [PROJECT] | [REPORTING PERIOD] | [date & time in your time zone]
+Mode: Mode: CONFIRMED BY USER
+Overall: [🟢 GREEN/🟠 AMBER/🔴RED/ N/A], Score: [X.X]/3.0
+- Do NOT ask the confirmation question again.
+- Then and only then the calling agent may proceed to persistence and the next group.
+
+Step B — CONFIRMED Group Summary (only after user selects option 1):
+- Do NOT reprint the group summary.
+- Output the following message: "GROUP SUMMARY FOR [Metric Group Name] is confirmed" (replace `[Metric Group Name]` with the actual name of the metric group being summarized).
+- Do NOT ask the confirmation question again.
+- Then and only then the calling agent may proceed to persistence and the next group.
+
+Important:
+- This gate is required even if the group is N/A (no scored metrics); still produce the table and request confirmation.
+- This skill does not perform persistence itself; it provides the required interaction checkpoint that the caller must honor.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # SCORING + AGGREGATION RULES (GENERIC)
@@ -81,8 +116,9 @@ When in STANDALONE MODE, you MUST output the final group report using this exact
 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 📊 [METRIC GROUP NAME] — [PROJECT] | [REPORTING PERIOD] | [date & time in your time zone]
+Mode: DRAFT
 
-Overall: [🟢 GREEN/🟠 AMBER/🔴RED], Score: [X.X]/3.0
+Overall: [🟢 GREEN/🟠 AMBER/🔴RED/ N/A], Score: [X.X]/3.0
 
 | Metric | Weighted Score | Status |
 | :--- | :---: | :---: |
@@ -104,14 +140,19 @@ Overall: [🟢 GREEN/🟠 AMBER/🔴RED], Score: [X.X]/3.0
 
 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
 
+Proceed with this group summary?
+1) Yes — save and continue
+2) No — change something
 
-Rules:
+HARD Rules:
 - Table is mandatory.
-- All metrics must appear EXCEPT permanently skipped metrics (reporting_status="skipped").
+- Important: Exclude skipped metrics (`{group_id}.metrics[metric_id].reporting_status = skipped` or (S / Skip option ("🚫 'S' - Skip / Not Applicable (Type 'S' to skip this metric)")) - don't show them in the table!
 - Concise Formatting: Ensure zero unnecessary whitespace or artificial column padding to keep the table compact.
 - Deferred metrics show as DEFERRED in Score, 🔘 in Status.
-- Do not replace with prose-only summary.
+- For N/A metrics, keep the row (unless permanently skipped) with Weighted Score = "N/A" and Status = "⚪" (or blank), but be consistent within the report.
 - If a section has no items, write "None".
+- In DRAFT mode, the confirmation question MUST be the final lines of the message (no text after).
+- In CONFIRMED mode, replace "Mode: DRAFT" with "Mode: CONFIRMED BY USER" and remove the confirmation question entirely.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # DYNAMIC TABLE POPULATION RULES
@@ -119,18 +160,28 @@ Rules:
 To populate the table and sections:
 
 1) Use the group’s metric catalog/order as the source of truth for which metrics exist.
-2) Exclude permanently skipped metrics (reporting_status="skipped") from the table.
+2) Exclude from the table skipped metrics: `{group_id}.metrics[metric_id].reporting_status = skipped` or (S / Skip option ("🚫 'S' - Skip / Not Applicable (Type 'S' to skip this metric)")
 3) Include deferred metrics in the table with:
    - Weighted Score = "DEFERRED"
    - Status = "🔘"
 4) For N/A metrics:
    - Keep the row (unless permanently skipped)
-   - Weighted Score can be "N/A"
-   - Status icon can be "⚪" (or keep blank), but be consistent within the report.
+   - Weighted Score = "N/A"
+   - Status = "⚪" (or keep blank), but be consistent within the report.
 5) Fill "NEEDS IMMEDIATE ATTENTION" with RED metrics; include gaps + delivery impact + fix (1–2 lines each).
 6) Fill "NEEDS ATTENTION" with AMBER metrics; include gap + impact (1–2 lines each).
 7) Fill "HEALTHY" with GREEN metrics (names only).
 8) If a section has no items, write "None".
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# USER REQUESTED EDITS (MANDATORY)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+If the user selects option 2 ("No — change something"):
+- Ask exactly ONE question:
+  "What would you like to change? (reply with: conclusion / table row(s) / gaps / fix / key facts)"
+- Only modify the parts the user requested.
+- Do NOT change computed scores unless the user changed a metric input/status that affects scoring.
+- Regenerate the full DRAFT summary and re-run the Confirmation Gate.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # PLACEHOLDER SOURCES
