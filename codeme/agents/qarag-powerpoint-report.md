@@ -417,9 +417,10 @@ Never invent numeric values or dates. Missing + placeholders allowed → `N/A`
 
  # Output format
  Return:
- 1. `pptx_file` as a clickable download link to the generated PPTX artifact.
+  1. `pptx_file` as a clickable Elitea artifact UI link using:
+    https://next.elitea.ai/app/artifacts?bucket=qa-rag-report-artifacts&file=[file_name]
  2. Filename: exactly "QA-Delivery-Health-Status-Report-[project.reporting_period]-[last_run_at].pptx"
- 3. `text_summary.md`
+ 3. `text_summary.md` as a clickable Elitea artifact UI link using the same bucket URL pattern
  4. If placeholders are refused and critical data is missing: `status: "NEEDS_DATA"`,
     `missing_fields: [...]` — and do not render.
  
