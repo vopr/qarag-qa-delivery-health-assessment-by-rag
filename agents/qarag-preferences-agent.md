@@ -52,11 +52,12 @@ Input may include any of:
 - metric_state_patch
 - jira_query_registry_patch
 - general field updates (name, project, timezone, reporting_period, cadence, devs, qas, jira_connected, last_run)
-- selection_defaults patch (see schema below)
+- selection_defaults patch (see rule 6 below)
+- full_preferences_replace: true (see rule 7 below — replaces entire document, not a merge)
 
 Behavior:
 1) Read current PreferencesConfig from Confluence.
-2) Apply patch via deep-merge rules (below).
+2) Apply patch via deep-merge rules (below), OR full replace if full_preferences_replace: true.
 3) If write is allowed: write updated JSON back to Confluence.
 4) Return JSON only:
 {
@@ -101,6 +102,20 @@ YYYY-MM-DD HH:mm (Time should be specified according to the user timezone)
   }
 - Example patch input:
   { "selection_defaults": { "start_message_raw": "Lets start", "metric_type": "ongoing", "selected_group_ids": ["testing_delivery_status"] } }
+
+7) full_preferences_replace mode (end-of-run only)
+- Triggered by `full_preferences_replace: true` in the patch input.
+- Erases the ENTIRE existing PreferencesConfig and writes a new document from scratch.
+- Deep-merge rules DO NOT apply; no existing node is preserved.
+- Use ONLY when OVERALL QARAG SUMMARY is confirmed by the user (complete run finished).
+- The replacement document MUST include all four top-level nodes:
+  a) general_project_info  — from run_output.general_project_info (with updated last_run_at)
+  b) selection_defaults    — from run_output.selection_defaults
+  c) metric_state          — merged from all group metric_state_patches accumulated this run
+                             Structure: { "<group_id>": { "metrics": { "<metric_id>": { "reporting_status": "..." } } } }
+  d) jira_query_registry   — merged from all group jira_query_registry_patches accumulated this run
+                             Omit if no Jira registry was touched this run (write empty object {})
+- Nodes not listed above (e.g. data from prior runs not touched this run) are intentionally dropped.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # PER-METRIC REPORTING STATUS CONTRACT

@@ -232,11 +232,22 @@ After finishing the group, build:
 - jira_query_registry_patch only if changed
 and persist once (apply_patch).
 
-STEP 4 — End-of-run:
-- Update general_project_info.last_run_at to current ISO UTC time.
-- Persist end-of-run apply_patch (patch only) if there are any remaining changes not already saved.
+STEP 4 — End-of-run (OVERALL QARAG SUMMARY confirmed):
+Build a full replacement document from run_output and call apply_patch ONCE with full_preferences_replace: true.
+The replacement document must contain exactly these four nodes — nothing else:
 
-IMPORTANT: Never overwrite unrelated preference nodes; patch only.
+  a) general_project_info  = run_output.general_project_info  (set last_run_at = current ISO UTC time)
+  b) selection_defaults    = run_output.selection_defaults
+  c) metric_state          = merged from all group_metrics[].metric_state_patch objects:
+       { "<group_id>": { "metrics": { "<metric_id>": { "reporting_status": "reported|deferred|skipped" } } } }
+       Mapping: GREEN/AMBER/RED → "reported" | DEFERRED → "deferred" | SKIPPED → "skipped" | N/A → omit
+  d) jira_query_registry   = merged from all group_metrics[].jira_query_registry_patch objects
+       (write {} if no Jira registry was updated this run)
+
+This erases all prior preferences data; only what was evaluated in this run is retained.
+
+IMPORTANT: full_preferences_replace: true is used ONLY here (end-of-run, summary confirmed).
+           All mid-run patches (start message capture, per-group saves) continue to use deep-merge.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # RUN CONFIG (INTAKE) — UPDATED (RUN MODE FIRST)
@@ -1218,7 +1229,10 @@ MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
 2) No — change something"
 3) STOP and wait for user answer.
 4) Only after user selects "1) Yes — save and continue":
-   - call apply_patch once (patch only)
+   - Build the full replacement document per STEP 4 in PREFERENCES HANDLING above.
+   - Call apply_patch ONCE with full_preferences_replace: true (erases all prior preferences;
+     writes only what this run produced: general_project_info, selection_defaults,
+     metric_state merged from all groups, jira_query_registry merged from all groups).
    - proceed to the next step.
 ---
 
