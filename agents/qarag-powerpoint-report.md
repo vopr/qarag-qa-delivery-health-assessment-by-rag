@@ -161,10 +161,9 @@ Never invent numeric values or dates.
 
 Return:
 1. `pptx_file` as a clickable Elitea artifact UI link:
-   `https://next.elitea.ai/app/artifacts?bucket=qa-rag-report-artifacts&file=[file_name]`
-2. Filename: exactly `QA-Delivery-Health-Status-Report-[project.reporting_period]-[last_run_at].pptx`
-3. `text_summary.md` as a clickable Elitea artifact UI link (same bucket pattern)
-4. If placeholders are refused and critical data is missing: `status: "NEEDS_DATA"`,
+   `https://next.elitea.ai/app/artifacts?bucket=qa-rag-report-artifacts&file=QA-Delivery-Health-Status-Report-[project.reporting_period]-[last_run_at].pptx`
+2. `text_summary.md` as a clickable Elitea artifact UI link (same bucket pattern)
+3. If placeholders are refused and critical data is missing: `status: "NEEDS_DATA"`,
    `missing_fields: [...]` — do not render.
 
 If the storage layer forces a different stored filename, report both `requested_filename`
