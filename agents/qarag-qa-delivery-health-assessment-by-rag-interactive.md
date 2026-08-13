@@ -1242,7 +1242,11 @@ MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
 You MUST keep `run_output` updated as follows:
 
 A) general_project_info:
-Populate from preferences.general_project_info (after any entry-info updates).
+IMMEDIATELY after STEP 1 (preferences loaded), copy the full preferences.general_project_info
+into run_output.general_project_info — do this unconditionally, even if the user has not
+made any changes. If the user updates any fields in STEP 2, apply those changes on top.
+NEVER leave run_output.general_project_info at schema defaults — it must always reflect
+the actual loaded (and possibly updated) preferences.
 
 B) selection_defaults:
 Populate from the selected run mode outcome:

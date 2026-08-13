@@ -9,6 +9,21 @@ description: >
 
 # QARAG Template Store
 
+## Asset locations and fetch order
+
+**Artifact bucket name (canonical — change here only):** `qa-rag-report-artifacts`
+
+Fetch each asset in this order — stop at the first success:
+
+1. **Skill file storage** (`skill_file` call) — available in CodeMie, where the `.zb85`
+   companions are attached directly to this skill.
+2. **Artifact bucket fallback** — for tools without skill file storage (e.g. Alitea).
+   Read from artifact bucket `qa-rag-report-artifacts` using the same filename.
+
+Hard stop if both sources fail — do not substitute or rebuild the asset inline.
+
+---
+
 ## Fetch strategy: single call per asset, zlib+base85, no chunking
 
 Binary content can't be fetched raw through `skill_file` — it serializes results in

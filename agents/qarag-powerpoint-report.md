@@ -59,13 +59,19 @@ unknown numeric → `"N/A"`. Never invent a numeric value under any circumstance
 
 # Render Pipeline
 
-1. **Fetch and decode both assets from `qarag-template-store`** (hard-stop if either
-   fails — do not substitute a hand-built deck):
+1. **Fetch and decode both assets** — follow the fetch order defined in `qarag-template-store`
+   (hard-stop if both sources fail — do not substitute a hand-built deck):
 
-   | Asset to fetch | Write to workspace as |
+   | Asset filename | Write to workspace as |
    |---|---|
    | `QA_Delivery_Health_Status_Report_Template_-_Optimized.pptx.zb85` | `template.pptx` |
    | `render.py.zb85` | `render.py` |
+
+   **Fetch order per asset (stop at first success):**
+   1. `skill_file("<filename>")` — succeeds in CodeMie where files are attached to the skill.
+   2. Read from artifact bucket `qa-rag-report-artifacts`, file `<filename>` — fallback for
+      tools without skill file storage (e.g. Alita). Bucket name is defined in
+      `qarag-template-store`; do not hardcode it here.
 
    Both files are zlib-compressed then base85-encoded. Decode each with:
    ```python
@@ -73,8 +79,8 @@ unknown numeric → `"N/A"`. Never invent a numeric value under any circumstance
    data = zlib.decompress(base64.b85decode(encoded_text))
    ```
    Write decoded bytes via a binary-safe channel (not a text-mode write tool — see
-   Execution Constraints). Fetch each in a single `skill_file` call; if a result
-   contains a truncation marker, that is a hard error, not something to route around.
+   Execution Constraints). Fetch each in a single call; if a result contains a truncation
+   marker, that is a hard error, not something to route around.
 
 2. Write `report_model` to `report_model.json` in the workspace.
 3. Invoke `render.py` as a module (no `subprocess` — unavailable in this sandbox):
