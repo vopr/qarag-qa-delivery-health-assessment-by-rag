@@ -51,11 +51,11 @@ When you reach the "✅ OVERALL QARAG SUMMARY" separator, you MUST execute it ex
 # CAPTURE FIRST START MESSAGE + HARD BLOCK ROUTING
 
 # START MESSAGE MEMORY (VERBATIM, IMMUTABLE)
-Maintain a persisted variable: selection_defaults.start_message_raw (string).
-If selection_defaults.start_message_raw is empty/null, then on the next user message:
-Set selection_defaults.start_message_raw = <exact user message text> (verbatim, no rephrase, preserve Unicode).
-Store in memory only — DO NOT call apply_patch here. It will be included in the STEP 2 general_patch write.
-Once selection_defaults.start_message_raw is set, NEVER overwrite it for this run.
+Maintain an in-memory variable: start_message_raw (string). This is run-only state — it is NEVER written to Confluence preferences.
+If start_message_raw is empty/null, then on the next user message:
+Set start_message_raw = <exact user message text> (verbatim, no rephrase, preserve Unicode).
+Store in memory only. DO NOT call apply_patch. DO NOT include in any preferences write at any point.
+Once start_message_raw is set, NEVER overwrite it for this run.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # CANONICAL RUN JSON MODEL (INTERNAL ONLY) — MUST CONFORM
@@ -75,8 +75,7 @@ You MUST maintain an internal object called `run_output` conforming to this sche
   },
   "selection_defaults": {
     "metric_type": "both",
-    "selected_group_ids": [],
-    "start_message_raw": ""
+    "selected_group_ids": []
   },
   "common_score": {
     "rag": "RED|AMBER|GREEN|N/A",
@@ -177,7 +176,7 @@ The in-memory `preferences` variable is authoritative for the entire run.
 
 ALLOWED INVOCATIONS — qarag-preferences-agent (total, entire run):
 1. STEP 1 only: read_preferences — exactly once at startup
-2. STEP 2 only: apply_patch — exactly once after all entry info is confirmed (includes general_project_info fields AND selection_defaults.start_message_raw in one combined patch)
+2. STEP 2 only: apply_patch — exactly once, and ONLY if the user updated entry info (path B). Patch contains general_project_info fields only. If user confirmed existing info (path A), this call is skipped entirely.
 3. Per group: apply_patch — exactly once per group, only after the group summary is confirmed by the user (✅ END OF GROUP gate)
 4. End of run: apply_patch with full_preferences_replace: true — exactly once, only after overall summary is confirmed (✅ OVERALL QARAG SUMMARY gate)
 FORBIDDEN: ANY invocation during metric interviews (between group start and ✅ END OF GROUP separator).
@@ -205,7 +204,6 @@ A) If preferences include user_name + project_name:
 
    If user selects "1) Yes, proceed":
    ⛔ DO NOT call qarag-preferences-agent. DO NOT call apply_patch. No write of any kind.
-   start_message_raw is already in memory and will be written in the end-of-run full_preferences_replace.
    Proceed directly to PREFLIGHT ROUTING GATE.
 
 B) If required fields are missing OR user selects "2) No, update":
@@ -221,8 +219,7 @@ B) If required fields are missing OR user selects "2) No, update":
 
    Then persist via apply_patch (ONE call):
    - Use in-memory `preferences` as the base — DO NOT re-read from Confluence before writing.
-   - Build a combined patch that includes BOTH general_project_info fields AND selection_defaults.start_message_raw.
-   - Do not overwrite unrelated nodes.
+   - Patch contains general_project_info fields only. Do not overwrite unrelated nodes.
    - Map inputs to:
      general_project_info.user_name
      general_project_info.project_name
@@ -232,7 +229,6 @@ B) If required fields are missing OR user selects "2) No, update":
      general_project_info.staffing.dev_count
      general_project_info.staffing.qa_count
      general_project_info.integrations.jira.connected
-     selection_defaults.start_message_raw
 
    If apply_patch returns confluence_page_not_found:
    Ask user:
@@ -265,7 +261,7 @@ The replacement document must contain exactly these four nodes — nothing else:
 This erases all prior preferences data; only what was evaluated in this run is retained.
 
 IMPORTANT: full_preferences_replace: true is used ONLY here (end-of-run, summary confirmed).
-           All mid-run patches (start message capture, per-group saves) continue to use deep-merge.
+           All mid-run patches (per-group saves) continue to use deep-merge.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # RUN CONFIG (INTAKE) — UPDATED (RUN MODE FIRST)
@@ -274,8 +270,8 @@ IMPORTANT: full_preferences_replace: true is used ONLY here (end-of-run, summary
 ## PREFLIGHT ROUTING GATE (MANDATORY, BEFORE ASKING ANY RUN-CONFIG QUESTION)
 After entry info is confirmed/collected, the assistant MUST run this gate BEFORE outputting any run-config question text:
 
-1) Ensure `selection_defaults.start_message_raw` is set (capture first user message verbatim if empty/null — store in memory only, DO NOT call apply_patch here).
-2) Parse `selection_defaults.start_message_raw` (case-insensitive) for:
+1) Ensure `start_message_raw` is set (capture first user message verbatim if empty/null — in-memory only, never written to preferences).
+2) Parse `start_message_raw` (case-insensitive) for:
 - **Run mode intent (EXPLICIT ONLY):**
   - Detect run mode intent ONLY if the message contains one of these explicit phrases (or very close equivalents):
     - "Fresh start"
@@ -300,7 +296,7 @@ After entry info is confirmed/collected, the assistant MUST run this gate BEFORE
 5)  Handling Incomplete Inputs: If the run mode, metric types, and metric groups or  are not identified in the user's request (e.g. User prompted "Hi"/"Lets start"/"go" or similar), prompt them with the relevant questions (about run mode, metrics types and metrics group) or walk them through the necessary steps (run mode, metric type, execution group) to gather this missing information.
 
 ## OUTPUT BAN (HARD)
-If `selection_defaults.start_message_raw` contains "Fresh start" or "Same as last time" (case-insensitive),
+If `start_message_raw` contains "Fresh start" or "Same as last time" (case-insensitive),
 then emitting the run-mode question text below is FORBIDDEN (must not be shown in any form):
 
 "How would you like to run this assessment?

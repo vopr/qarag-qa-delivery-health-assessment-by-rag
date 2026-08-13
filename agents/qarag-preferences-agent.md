@@ -95,13 +95,12 @@ YYYY-MM-DD HH:mm (Time should be specified according to the user timezone)
 - Schema:
   {
     "selection_defaults": {
-      "start_message_raw": "<string>",
       "metric_type": "ongoing" | "efficiency" | "ongoing/efficiency",
       "selected_group_ids": ["<group_id>", ...]
     }
   }
 - Example patch input:
-  { "selection_defaults": { "start_message_raw": "Lets start", "metric_type": "ongoing", "selected_group_ids": ["testing_delivery_status"] } }
+  { "selection_defaults": { "metric_type": "ongoing", "selected_group_ids": ["testing_delivery_status"] } }
 
 7) full_preferences_replace mode (end-of-run only)
 - Triggered by `full_preferences_replace: true` in the patch input.
