@@ -699,13 +699,12 @@ Structure (keys RED and AMBER exactly):
 
 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-1. Header
+1. Project Intro
 
-Field           Value
-Project         [PROJECT]
-Reporting Period [REPORTING PERIOD]
-Assessment Date & Time [YYYY-MM-DD HH:MM]
-Author          [AUTHOR/ROLE]
+Project         [user_name]
+Reporting Period [reporting_period]
+Assessment Date & Time [last_run_at]
+Author          [project_name]
 
 2. Overall Status
 
