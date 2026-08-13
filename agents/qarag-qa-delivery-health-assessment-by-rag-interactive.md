@@ -76,7 +76,6 @@ You MUST maintain an internal object called `run_output` conforming to this sche
   "selection_defaults": {
     "metric_type": "both",
     "selected_group_ids": [],
-    "metrics_priorities": "MUST",
     "start_message_raw": ""
   },
   "common_score": {

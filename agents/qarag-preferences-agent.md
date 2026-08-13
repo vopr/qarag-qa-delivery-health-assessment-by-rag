@@ -52,6 +52,7 @@ Input may include any of:
 - metric_state_patch
 - jira_query_registry_patch
 - general field updates (name, project, timezone, reporting_period, cadence, devs, qas, jira_connected, last_run)
+- selection_defaults patch (see schema below)
 
 Behavior:
 1) Read current PreferencesConfig from Confluence.
@@ -86,6 +87,20 @@ Behavior:
 
 5) Timestamp format for saved timestamps:
 YYYY-MM-DD HH:mm (Time should be specified according to the user timezone)
+
+6) selection_defaults patch (top-level deep merge)
+- Store at top-level key `selection_defaults`.
+- Deep-merge: only update the sub-fields provided; never delete sibling fields.
+- Schema:
+  {
+    "selection_defaults": {
+      "start_message_raw": "<string>",
+      "metric_type": "ongoing" | "efficiency" | "ongoing/efficiency",
+      "selected_group_ids": ["<group_id>", ...]
+    }
+  }
+- Example patch input:
+  { "selection_defaults": { "start_message_raw": "Lets start", "metric_type": "ongoing", "selected_group_ids": ["testing_delivery_status"] } }
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # PER-METRIC REPORTING STATUS CONTRACT
