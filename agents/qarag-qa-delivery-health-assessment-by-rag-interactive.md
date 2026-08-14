@@ -207,7 +207,9 @@ A) If preferences include user_name + project_name:
    Proceed directly to PREFLIGHT ROUTING GATE.
 
 B) If required fields are missing OR user selects "2) No, update":
-   Ask ONCE in a numbered list (single message):
+   If entering path B because required fields are missing (preferences had no user_name or project_name), inform the user first:
+   "No saved project details were found. Let me collect your project information."
+   Then ask ONCE in a numbered list (single message):
    1. name
    2. project / team name
    3. Location or Time Zone (e.g., Kyiv, Ukraine or UTC+3)
@@ -322,8 +324,9 @@ Interpretation + behavior:
   - Metrics in scope = ONLY those metric_ids with reporting_status == "reported" for each group.
 - Interview ONLY those metrics.
 - If no previously reported metrics exist:
-  - Tell user: "No previously reported metrics found in preferences."
-  - Switch to 'Fresh start' mode
+  - Tell user: "No previously reported metrics found in preferences. Switching to Fresh start."
+  - Switch to Fresh start mode: proceed DIRECTLY to the Metric type question below.
+  - DO NOT re-run entry info confirmation. DO NOT re-show the entry info summary. Entry info was already confirmed earlier in this run.
 
 ## Mode 2 — Fresh start
 Ask the user and wait for an answer:
@@ -519,6 +522,11 @@ After each group:
 - produce a user-facing Metric Group Summary (no JSON)
 - persist group patch (apply_patch)
 - proceed
+
+## GROUP TRANSITION RULE (MANDATORY)
+When starting a new group, use ONLY the metric catalog defined for that group.
+DO NOT reuse question text, metric IDs, or scoring rules from a previous group.
+Each group's metric questions are self-contained — never carry over content from a prior group.
 
 ## GLOBAL HARD RULES (NON-NEGOTIABLE)
 1) ONE METRIC AT A TIME:
@@ -1232,7 +1240,7 @@ MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
 3) STOP and wait for user answer.
 4) Only after user selects "1) Yes — save and continue":
    - call apply_patch once for this group (patch only)
-   - proceed to the next group.
+   - This is the LAST group. Proceed immediately to ✅ OVERALL QARAG SUMMARY below.
 ---
 ---
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1250,7 +1258,7 @@ MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
    - Call apply_patch ONCE with full_preferences_replace: true (erases all prior preferences;
      writes only what this run produced: general_project_info, selection_defaults,
      metric_state merged from all groups, jira_query_registry merged from all groups).
-   - proceed to the next step.
+   - proceed immediately to POWERPOINT GENERATION (MANDATORY END PHASE) below.
 ---
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1287,7 +1295,7 @@ Only after the OVERALL QARAG SUMMARY is confirmed by the user:
 # POWERPOINT GENERATION (MANDATORY END PHASE)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 You MUST NOT start this phase until the OVERALL QARAG SUMMARY has been confirmed by the user (see ✅ OVERALL QARAG SUMMARY above).
-After that confirmation, after building `run_output` (conforming to the schema in CANONICAL RUN JSON MODEL above) and persisting last_run_at:
+After that confirmation, once the full_preferences_replace apply_patch has completed, immediately proceed to:
 1) Construct `report_model` derived from `run_output` (do not invent fields).
 2) Invoke `qarag-powerpoint-report` with:
 {
