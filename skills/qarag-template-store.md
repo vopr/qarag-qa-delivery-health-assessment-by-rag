@@ -24,7 +24,7 @@ Hard stop if both sources fail — do not substitute or rebuild the asset inline
 
 ---
 
-## Fetch strategy: single call per asset, zlib+base85, no chunking
+## Fetch strategy: zlib+base85, chunked into ≤6 000-character pieces
 
 Binary content can't be fetched raw through `skill_file` — it serializes results in
 `encoding="text"` mode, which corrupts arbitrary binary bytes (confirmed in practice:
@@ -42,9 +42,8 @@ text — enough to risk `skill_file`'s per-call truncation on a long conversatio
   slideMaster, etc.), but compressing the whole container as one stream can.
 
 Net result on the current template: 25,584 bytes binary -> 20,356 bytes compressed ->
-25,445 bytes base85 text — **smaller than the raw binary itself**, and safely under
-whatever margin below `skill_file`'s truncation ceiling matters. `render.py` benefits
-even more, since source code compresses well: 26,340 bytes -> 10,432 bytes encoded.
+25,445 bytes base85 text. `render.py` benefits even more, since source code compresses
+well: 26,340 bytes -> 10,432 bytes encoded.
 
 Decode is one line each direction:
 ```python
@@ -52,28 +51,32 @@ encoded = base64.b85encode(zlib.compress(data, 9)).decode("ascii")   # encode (a
 data = zlib.decompress(base64.b85decode(encoded))                     # decode
 ```
 
-**Fetch each asset in a single `skill_file` call — no chunking.** The template's
-sibling `_chunks/` staging approach from an earlier version of this skill is gone;
-both assets are small enough now that a single call is the right default. If a single
-fetch ever does truncate in practice (check for a truncation marker in the result),
-that's the signal to reintroduce chunking for that specific asset, not something to
-assume upfront.
+**Assets are pre-split into chunks of ≤6 000 characters.** Even though `skill_file`
+can return the full content without truncation, the render agent runs on Bedrock
+(claude-sonnet-4-6) which does not support assistant message prefill — meaning the LLM
+cannot reliably copy a large opaque string verbatim into a `write_workspace_file` tool
+call. Chunks of ≤6 000 characters stay well within what the model can copy in a single
+call. The render agent fetches and writes each chunk separately, then a small Python
+script reassembles and decodes in the sandbox.
 
 ## Contents
 
-- **`render.py`** (~26 KB, plain source, human-readable) — the full render engine:
-  template unzip, slide/card duplication, run-level text substitution, RAG-color
-  runs, radar chart generation (including synthesizing the chart's picture shape from
-  scratch, since the template doesn't ship one — see below), repack. Kept here for
-  reference/direct download; **not** what gets fetched at render time.
+- **`render.py`** (~26 KB, plain source, human-readable) — the full render engine.
+  Kept for reference; **not** fetched at render time.
 - **`render.py.zb85`** (~10 KB) — `render.py`, zlib-compressed then base85-encoded.
-  **This is what the render agent actually fetches** for the script.
+  Kept for reference; **not** fetched at render time (too large to copy verbatim on Bedrock).
+- **`render.chunk1.zb85`** (6 000 chars) — first chunk of `render.py.zb85`. **Fetched at render time.**
+- **`render.chunk2.zb85`** (4 905 chars) — second chunk of `render.py.zb85`. **Fetched at render time.**
 - **`QA_Delivery_Health_Status_Report_Template_-_Optimized.pptx`** (~26 KB) — the
-  template, kept here for reference/direct download; **not** what gets fetched at
-  render time (binary, would be corrupted by `skill_file`'s text-mode encoding).
+  template, kept for reference; **not** fetched at render time (binary, corrupted by text-mode).
 - **`QA_Delivery_Health_Status_Report_Template_-_Optimized.pptx.zb85`** (~25 KB) — the
-  same template, zlib-compressed then base85-encoded. **This is what the render agent
-  actually fetches** for the template.
+  template, zlib-compressed then base85-encoded. Kept for reference; **not** fetched at
+  render time (too large to copy verbatim on Bedrock).
+- **`template.chunk1.zb85`** (6 000 chars) — chunk 1 of 5. **Fetched at render time.**
+- **`template.chunk2.zb85`** (6 000 chars) — chunk 2 of 5. **Fetched at render time.**
+- **`template.chunk3.zb85`** (6 000 chars) — chunk 3 of 5. **Fetched at render time.**
+- **`template.chunk4.zb85`** (6 000 chars) — chunk 4 of 5. **Fetched at render time.**
+- **`template.chunk5.zb85`** (1 338 chars) — chunk 5 of 5. **Fetched at render time.**
 
 Trimmed hard from the original ~13 MB corporate export: removed 71 unused slide
 layouts (the 4 content slides use exactly 1), their orphaned background images, empty
@@ -92,7 +95,7 @@ exists.
 
 ## Regenerating after an edit
 
-If either file changes, regenerate its `.zb85` companion from the updated file (`base64.b85encode(zlib.compress(data, 9))`) and replace it — don't let the plain file and its companion drift out of sync. If the template changes structurally (shapes added/removed, alt-text markers renamed), re-run `render.py` against it and confirm
+If either file changes, regenerate its `.zb85` companion (`base64.b85encode(zlib.compress(data, 9))`), then re-split into ≤6 000-character chunks and replace all chunk files — don't let the plain file, the `.zb85`, or the chunks drift out of sync. If the template changes structurally (shapes added/removed, alt-text markers renamed), re-run `render.py` against it and confirm
 the render still succeeds before redeploying — the chart-shape-synthesis fallback
 above is a good example of a structural change that needed a matching code change,
 not just a re-encode.

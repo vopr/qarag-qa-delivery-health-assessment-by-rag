@@ -570,6 +570,24 @@ A metric may be asked ONLY if it matches BOTH:
 
 If a metric fails either filter → skip it entirely (no prompt, no questions).
 
+## EMPTY GROUP GATE (APPLY BEFORE STARTING EACH GROUP)
+Before asking the first metric of any group, check whether at least one metric in that group
+matches the selected metric_type (same filter logic: ongoing → ongoing+both; efficiency → efficiency+both; both → all).
+If ZERO metrics in the group match the selected metric_type:
+- Skip ALL metric interviews for this group.
+- Do NOT generate a Group Summary.
+- Do NOT run the Confirmation Gate for this group.
+- Do NOT call apply_patch for this group.
+- Do NOT include this group in run_output.group_metrics[].
+- Output exactly this message (substituting actual values):
+  "ℹ️ There are no [Ongoing/Efficiency] metrics in the **[Group Name]** group — it was not evaluated!"
+- Proceed immediately to the next selected group.
+
+If unable to determine whether a group has any matching metrics, retry the check up to 3 times.
+If still unable to determine after 3 retries, output the exact error reason to the user and stop processing that group:
+  "‼️ ERROR: Unable to evaluate group [Group Name] — [exact reason]. Skipping this group."
+Then proceed to the next selected group.
+
 ## RUN MODE METRIC INCLUSION RULES
 ### Mode 2 — Fresh start
 - Ignore {group_id}.metrics[metric_id].reporting_status completely.
@@ -638,6 +656,7 @@ Step B — CONFIRMED:
 - Only then proceed to persistence and the next group.
 
 Important: This gate is required even if the group is N/A.
+Exception: If the Empty Group Gate fired for this group (zero metrics matched the selected metric_type), this entire Confirmation Gate is BYPASSED. No summary is generated, no confirmation is asked.
 
 ## GROUP SUMMARY OUTPUT TEMPLATE
 
@@ -711,6 +730,15 @@ Use the same formula as group scoring, applied across groups:
 - OverallScore = Numerator / Denominator (range: 1.0–3.0)
 - Same RAG thresholds: >= 2.3 GREEN, >= 1.7 AMBER, < 1.7 RED
 
+IMPORTANT: Groups where the Empty Group Gate fired (zero metrics matched the selected metric_type)
+are EXCLUDED entirely from the overall score computation — they do not contribute to numerator or
+denominator (not even as N/A). Only groups that were actually evaluated are included.
+
+Edge case — if ALL selected groups fired the Empty Group Gate (nothing was evaluated at all):
+- Do NOT compute an overall score.
+- Output: "ℹ️ No metrics were evaluated in any of the selected groups for the chosen metric type. Assessment cannot be completed. Please restart with a different Metric Type or Group selection."
+- Stop the assessment. Do NOT proceed to PowerPoint generation or preferences persistence.
+
 Fill run_output.common_score: { rag, score, general_conclusion, gaps, fix }
 
 ## TOP_ITEMS GENERATION RULES
@@ -767,6 +795,7 @@ Rules:
 - Tables are mandatory. Keep formatting concise with zero unnecessary whitespace.
 - Do not replace with a prose-only summary.
 - If a section has no items, write "None".
+- Groups where the Empty Group Gate fired (not evaluated) are EXCLUDED from the Groups Overview table entirely — do not show them, not even with N/A status.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # METRIC GROUP 1 — RELEASE READINESS STATUS
@@ -1031,6 +1060,7 @@ If b or c, follow up:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ END OF GROUP: release_readiness (Release Readiness)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ PRE-CHECK: If the Empty Group Gate fired for this group (zero metrics matched the selected metric_type), SKIP steps 1–4 below entirely and proceed to the next group.
 MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
 1) Compute group_score/group_status/group_conclusion per Group Scoring Rules above and output the Group Summary (DRAFT).
 2) Ask the user for confirmation:
@@ -1231,6 +1261,7 @@ c. No — insufficient; QA is a bottleneck, or testing is limited to smoke/happy
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ END OF GROUP: testing_delivery_status (Testing Delivery Status)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ PRE-CHECK: If the Empty Group Gate fired for this group (zero metrics matched the selected metric_type), SKIP steps 1–4 below entirely and proceed to the next group.
 MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
 1) Compute group_score/group_status/group_conclusion per Group Scoring Rules above and output the Group Summary (DRAFT).
 2) Ask the user for confirmation:
@@ -1414,6 +1445,7 @@ If no Jira data → ask:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ END OF GROUP: defect_management (Defect Management)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ PRE-CHECK: If the Empty Group Gate fired for this group (zero metrics matched the selected metric_type), SKIP steps 1–4 below entirely and proceed to the next group.
 MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
 1) Compute group_score/group_status/group_conclusion per Group Scoring Rules above and output the Group Summary (DRAFT).
 2) Ask the user for confirmation:

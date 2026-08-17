@@ -517,13 +517,28 @@ def render(template_source, report_model_path, output_path):
         xml = replace_first(xml, "[General Conclusion on this metrics category and key recommendations]",
                              g["group_conclussion"])
 
-        detail = g.get("metric_results", {}).get("detail", []) or g.get("metric_results", {}).get("gaps", [])
+        # Key Data shows numeric facts only — counts, percentages, ratios, dates
+        # with digits. Rows whose value carries no digit at all ("Forecast finish
+        # date after release date", "No bottlenecks reported") are dropped
+        # entirely, not shown and not padded: that's status/fix commentary, and it
+        # already lives in the Conclusion and Findings sections below — repeating
+        # it here as a fake "key fact" is exactly the clutter this filter exists
+        # to remove. Filter BEFORE truncating to 4, so a numeric fact positioned
+        # 5th+ in the source list isn't dropped in favor of a non-numeric one that
+        # happened to come first.
+        detail_raw = g.get("metric_results", {}).get("detail", []) or g.get("metric_results", {}).get("gaps", [])
+        detail_rows = []
+        for row in detail_raw:
+            label = row.get("label", "") if isinstance(row, dict) else str(row)
+            value = row.get("value", "") if isinstance(row, dict) else ""
+            if re.search(r"\d", str(value)):
+                detail_rows.append((label, value))
+        detail_rows = detail_rows[:4]
+
         labels_tok = ["[Key data name 1]", "[Key data name N]", "[Key data name N+1]", "[Key data name N+2]"]
         for idx, tok in enumerate(labels_tok):
-            if idx < len(detail):
-                row = detail[idx]
-                label = row.get("label", "") if isinstance(row, dict) else str(row)
-                value = row.get("value", "") if isinstance(row, dict) else ""
+            if idx < len(detail_rows):
+                label, value = detail_rows[idx]
                 xml = xml.replace(tok, label, 1)
                 xml = xml.replace(tok, value, 1)
             else:
