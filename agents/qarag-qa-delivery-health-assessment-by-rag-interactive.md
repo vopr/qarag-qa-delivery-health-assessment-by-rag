@@ -1240,6 +1240,189 @@ MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
 3) STOP and wait for user answer.
 4) Only after user selects "1) Yes — save and continue":
    - call apply_patch once for this group (patch only)
+   - proceed to the next group (defect_management).
+---
+---
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# METRIC GROUP 3 — DEFECT MANAGEMENT
+# group_id: defect_management | group_key: 3 | group: Defect Management | weight: 1.0
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# METRIC CATALOG (STABLE IDS)
+m3.1 = M3.1 — DEFECT AGE TREND: P1 (Critical)
+m3.2 = M3.2 — DEFECT AGE TREND: P2 (High)
+m3.3 = M3.3 — DEFECT AGE TREND: Other Priorities (P3)
+m3.4 = M3.4 — SUBMISSION OF A FEATURE AS A DEFECT: Features submitted as defects (all priorities)
+m3.5 = M3.5 — SUBMISSION OF A FEATURE AS A DEFECT: P1/P2 features submitted as defects %
+m3.6 = M3.6 — DEFECT REPORTING QUALITY - REJECTED DEFECTS: P1, P2 priority defects
+m3.7 = M3.7 — DEFECT REPORTING QUALITY - REJECTED DEFECTS: Other priority defects
+
+Selection filter:
+- If shared_context.selection.metric_type exists use it, else preferences.selection_defaults.metric_type, else "both".
+- ongoing => evaluate ongoing + both
+- efficiency => evaluate efficiency + both
+- both => evaluate all
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# METRIC DEFINITIONS (ASK EXACTLY AS WRITTEN)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## M3.1 — DEFECT AGE TREND: P1 (Critical)
+Weight: 1.0 | SHOULD | Efficiency
+Description: P1 defects are critical and must be resolved immediately to avoid blocking key functionality or timelines.
+GREEN:  Resolved within:
+• 0.5 days for weekly releases
+• 1 day for bi-weekly releases
+• 2 days for monthly releases
+• 3 days for quartely releases
+AMBER: Resolved within:
+• 0.5-1 day for weekly releases
+• 1-2 days for bi-weekly releases
+• 2-3 days for monthly releases
+• 3-5 days for quartely releases
+RED:   Unresolved for:
+• >1 day for weekly releases
+• >2 days for bi-weekly releases
+• >3 days for monthly releases
+• >5 days for quartely releases
+
+If Jira data in context → use directly, skip question.
+If no Jira data → ask:
+"**What is the average age (in days) of currently open or recently resolved P1 (Critical) defects this period?**
+🔤 Reply: [n] days
+🚫 'S' - Skip / Not Applicable (Type 'S' to skip this metric)"
+
+---
+## M3.2 — DEFECT AGE TREND: P2 (High)
+Weight: 1.0 | SHOULD | Efficiency
+Description: P2 defects are high priority and should be addressed quickly to minimize risks to functionality or timelines.
+GREEN:  Resolved within:
+• 1 day for weekly releases
+• 2 days for bi-weekly releases
+• 4 days for monthly releases
+• 6 days for bi-monthly releases
+AMBER: Resolved within:
+• 1-2 days for weekly releases
+• 2-4 days for bi-weekly releases
+• 4-6 days for monthly releases
+• 6-10 days for bi-monthly releases
+RED:   Unresolved for:
+• >2 days for weekly releases
+• >4 days for bi-weekly releases
+• >6 days for monthly releases
+• >10 days for bi-monthly releases
+
+If Jira data in context → use directly, skip question.
+If no Jira data → ask:
+"**What is the average age (in days) of currently open or recently resolved P2 (High) defects this period?**
+🔤 Reply: [n] days
+
+🚫 'S' - Skip / Not Applicable (Type 'S' to skip this metric)"
+
+---
+## M3.3 — DEFECT AGE TREND: Other Priorities (P3)
+Weight: 0.5 | COULD | Efficiency
+Description: Medium-priority defects can tolerate longer resolution times but should not accumulate excessively, as this may indicate backlog mismanagement. Low-priority defects may be deferred or deprioritized entirely.
+GREEN:  Resolved within 7 days
+AMBER: Resolved within 7-14 days
+RED:   Unresolved for >14 days
+
+If Jira data in context → use directly, skip question.
+If no Jira data → ask:
+"**What is the average age (in days) of currently open or recently resolved P3 (and lower priority) defects this period?**
+🔤 Reply: [n] days
+
+🚫 'S' - Skip / Not Applicable (Type 'S' to skip this metric)"
+
+---
+## M3.4 — SUBMISSION OF A FEATURE AS A DEFECT: Features submitted as defects (all priorities)
+Weight: 0.5 | COULD | Efficiency
+Description: Mislabeling features as defects inflates defect counts, falsely suggesting more quality issues than exist. This skews metrics, disrupts workflows, and misallocates resources, diverting focus from actual defects and planned features.
+Using the "FeatureDefect" label, teams can monitor trends weekly and identify whether the mislabeling is under control or becoming problematic.
+Note: e.g. Weekly Trend
+GREEN:  <10%
+Less than 10% of submitted defects are identified as feature requests.
+The majority of submissions are properly categorized, ensuring defect trends and metrics remain reliable.
+AMBER: 10%-20%
+Between 10% and 20% of submitted defects are identified as feature requests.
+Mislabeling is noticeable and causes minor inefficiencies in defect triaging and prioritization.
+RED:   >20%
+More than 20% of submitted defects are identified as feature requests.
+Defect metrics are heavily distorted, making it difficult to accurately track trends or prioritize true defects.
+
+If Jira data in context → use directly, skip question.
+If no Jira data → ask:
+"**What percentage of defects submitted this period were identified as feature requests (labeled as FeatureDefect or similar)?**
+🔤 Reply: [n]% or provide: Total defects: [n] | Feature defects: [n]
+
+🚫 'S' - Skip / Not Applicable (Type 'S' to skip this metric)"
+
+---
+## M3.5 — SUBMISSION OF A FEATURE AS A DEFECT: P1/P2 features submitted as defects %
+Weight: 0.3 | COULD | Efficiency
+Description: Separately you can monitor Feature defects by priority to show impact on delivery if a lot of such defects has high or critical priority.
+GREEN:  <30% of these Feature Defects are classified as P1/P2 Priority.
+AMBER: 30%-50% of these Feature Defects are classified as P1/P2 Priority.
+RED:   >50% of these Feature Defects are classified as P1/P2 Priority.
+
+If Jira data in context → use directly, skip question.
+If no Jira data → ask:
+"**Of the feature defects identified this period, what percentage are classified as P1 or P2 priority?**
+🔤 Reply: [n]% or provide: Total feature defects: [n] | P1/P2 feature defects: [n]
+
+🚫 'S' - Skip / Not Applicable (Type 'S' to skip this metric)"
+
+---
+## M3.6 — DEFECT REPORTING QUALITY - REJECTED DEFECTS: P1, P2 priority defects
+Weight: 0.5 | COULD | Efficiency
+Description: Defects rejected as "not a defect", "not-reproducible", "vague description", etc.
+Poor defect reporting quality wastes time and resources on unclear, vague, or misclassified issues, skews defect metrics, delays resolutions for critical defects, and disrupts workflows. It impacts delivery timelines, compromises product quality, and hinders collaboration between stakeholders and teams.
+GREEN:  <10%
+The rejected defect rate is low, and most defects submitted are valid, clear, and reproducible.
+AMBER: 10%-20%
+A moderate percentage of defects are rejected due to unclear descriptions or invalid submissions.
+RED:   >20%
+A significant portion of defects are rejected, indicating systemic issues in defect submission.
+
+If Jira data in context → use directly, skip question.
+If no Jira data → ask:
+"**What percentage of P1/P2 defects submitted this period were rejected (as 'not a defect', 'not reproducible', 'vague description', etc.)?**
+🔤 Reply: [n]% or provide: Total P1/P2 submitted: [n] | Rejected: [n]
+
+🚫 'S' - Skip / Not Applicable (Type 'S' to skip this metric)"
+
+---
+## M3.7 — DEFECT REPORTING QUALITY - REJECTED DEFECTS: Other priority defects
+Weight: 0.3 | COULD | Efficiency
+Description: Defects rejected as "not a defect", "not-reproducible", "vague description", etc.
+Poor defect reporting quality wastes time and resources on unclear, vague, or misclassified issues, skews defect metrics, delays resolutions for critical defects, and disrupts workflows. It impacts delivery timelines, compromises product quality, and hinders collaboration between stakeholders and teams.
+GREEN:  <15%
+The rejected defect rate is low, and most defects submitted are valid, clear, and reproducible.
+AMBER: 15%-25%
+A moderate percentage of defects are rejected due to unclear descriptions or invalid submissions.
+RED:   >25%
+A significant portion of defects are rejected, indicating systemic issues in defect submission.
+
+If Jira data in context → use directly, skip question.
+If no Jira data → ask:
+"**What percentage of other priority (P3 and below) defects submitted this period were rejected (as 'not a defect', 'not reproducible', 'vague description', etc.)?**
+🔤 Reply: [n]% or provide: Total other priority submitted: [n] | Rejected: [n]
+
+🚫 'S' - Skip / Not Applicable (Type 'S' to skip this metric)"
+
+---
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ END OF GROUP: defect_management (Defect Management)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MANDATORY NEXT STEP (DO NOT SKIP / DO NOT PROCEED):
+1) Compute group_score/group_status/group_conclusion per Group Scoring Rules above and output the Group Summary (DRAFT).
+2) Ask the user for confirmation:
+"Proceed with this group summary?
+1) Yes — save and continue
+2) No — change something"
+3) STOP and wait for user answer.
+4) Only after user selects "1) Yes — save and continue":
+   - call apply_patch once for this group (patch only)
    - This is the LAST group. Proceed immediately to ✅ OVERALL QARAG SUMMARY below.
 ---
 ---
