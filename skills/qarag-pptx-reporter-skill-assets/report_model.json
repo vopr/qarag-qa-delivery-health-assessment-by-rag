@@ -1,0 +1,229 @@
+{
+  "general_project_info": {
+    "user_name": "Volodyrmy Prymakov",
+    "project_name": "The best Rag Project",
+    "project_timezone": "Kyiv/Ukraine",
+    "reporting_period": "Release 3.0",
+    "cadence": "Bi-Weekly",
+    "staffing": {
+      "dev_count": 7,
+      "qa_count": 3
+    },
+    "integrations": {
+      "jira": {
+        "connected": false
+      }
+    },
+    "last_run_at": "2026-08-17T00:00:00Z"
+  },
+  "selection_defaults": {
+    "metric_type": "both",
+    "selected_group_ids": [
+      "release_readiness",
+      "testing_delivery_status"
+    ]
+  },
+  "common_score": {
+    "rag": "AMBER",
+    "score": 2.42,
+    "general_conclusion": "Release readiness is currently constrained primarily by product quality (high number of P1 blockers), while delivery execution looks generally on-track with low operational bottlenecks. The critical path is reducing P1s quickly and validating testing coverage readiness as execution has not started. QA capacity is slightly imbalanced (2.33:1), which can compress regression depth near release unless managed proactively.",
+    "gaps": "10 open P1 blockers; 14 open lower-priority/untriaged defects; QA share at 30% (below the recommended 33% threshold).",
+    "fix": "1) Triage all P1 blockers immediately — assign owners and ETAs, run daily burn-down. 2) Schedule weekly defect triage to prevent P3/P4 backlog growth. 3) Rebalance workload or source short-term QA capacity for regression and edge-case coverage."
+  },
+  "top_items": {
+    "RED": [
+      {
+        "group": "Release Readiness",
+        "metrics": [
+          {
+            "item": "M1.1 — PRODUCT QUALITY: P1/P2 Defects",
+            "why": "10 open P1 blockers exceed the RED threshold (2+ P1 open), directly blocking release.",
+            "action": "Triage P1s immediately, assign owners/ETAs, and run daily burn-down until 0 P1 and ≤2 P2 remain."
+          }
+        ]
+      }
+    ],
+    "AMBER": [
+      {
+        "group": "Release Readiness",
+        "metrics": [
+          {
+            "item": "M1.2 — PRODUCT QUALITY: P3/P4/P5 Defects",
+            "why": "14 open lower-priority/untriaged defects fall in the AMBER band (11–20).",
+            "action": "Establish weekly triage + cleanup targets to prevent accumulation and keep metrics reliable."
+          }
+        ]
+      },
+      {
+        "group": "Testing Delivery Status",
+        "metrics": [
+          {
+            "item": "M2.4 — QA CAPACITY NEEDS",
+            "why": "Dev:QA ratio is 2.33:1 (QA share ~30%), moderately imbalanced — regression and edge cases may be squeezed near release.",
+            "action": "Rebalance workload or add short-term QA support for regression/edge-case coverage."
+          }
+        ]
+      }
+    ]
+  },
+  "group_metrics": [
+    {
+      "group_key": 1,
+      "group_id": "release_readiness",
+      "group": "Release Readiness",
+      "weight": 1.0,
+      "group_score": 2.17,
+      "group_status": "AMBER",
+      "group_conclusion": "Release readiness is AMBER. Strong defect trend control and no impediments/risks, but 10 open P1 blockers represent an immediate quality threat that must be resolved before release.",
+      "metric_results": [
+        {
+          "metric_id": "m1.1",
+          "name": "PRODUCT QUALITY: P1/P2 Defects",
+          "type": "ongoing",
+          "optionality": "MUST",
+          "status": "RED",
+          "score": 1.0,
+          "weight": 1.0,
+          "detail": "10 open P1 (Blocker) defects and 0 P2 (Critical) defects. 2+ P1 open = RED.",
+          "gaps": "10 open P1 blockers far exceed the GREEN threshold (0 P1, 0–2 P2). High risk of release slip.",
+          "fix": "Triage all P1s immediately. Assign owners and resolution ETAs. Run daily burn-down tracking until count reaches 0 P1 and ≤2 P2.",
+          "key_facts": "P1: 10, P2: 0"
+        },
+        {
+          "metric_id": "m1.2",
+          "name": "PRODUCT QUALITY: P3/P4/P5 Defects",
+          "type": "ongoing",
+          "optionality": "SHOULD",
+          "status": "AMBER",
+          "score": 2.0,
+          "weight": 0.3,
+          "detail": "14 open P3/P4/P5 or untriaged defects. Falls in the AMBER band (11–20 open).",
+          "gaps": "Backlog of 14 lower-priority defects may grow if not triaged regularly, skewing metrics and masking real quality signals.",
+          "fix": "Establish a weekly triage cadence with explicit cleanup targets (e.g., reduce by 20% per sprint) to prevent accumulation.",
+          "key_facts": "14 open lower-priority/untriaged defects"
+        },
+        {
+          "metric_id": "m1.3",
+          "name": "CREATED VS RESOLVED TREND: P1/P2",
+          "type": "ongoing",
+          "optionality": "MUST",
+          "status": "GREEN",
+          "score": 3.0,
+          "weight": 1.0,
+          "detail": "Resolved trend line consistently matches or exceeds the Created trend line for P1/P2 defects.",
+          "gaps": "None",
+          "fix": "None",
+          "key_facts": "Answer B selected: Resolved trend consistently matches/exceeds Created trend."
+        },
+        {
+          "metric_id": "m1.5",
+          "name": "TESTING EXECUTION COVERAGE",
+          "type": "ongoing",
+          "optionality": "MUST",
+          "status": "N/A",
+          "score": "N/A",
+          "weight": 1.0,
+          "detail": "Manual P1/P2 test execution has not started or is too early to assess.",
+          "gaps": "N/A",
+          "fix": "N/A",
+          "key_facts": "Answer C: Not started / Too early to assess."
+        },
+        {
+          "metric_id": "m1.7",
+          "name": "RELEASE IMPEDIMENTS",
+          "type": "ongoing",
+          "optionality": "MUST",
+          "status": "GREEN",
+          "score": 3.0,
+          "weight": 1.0,
+          "detail": "No active release impediments or delays reported.",
+          "gaps": "None",
+          "fix": "None",
+          "key_facts": "Answer A: No impediments."
+        },
+        {
+          "metric_id": "m1.8",
+          "name": "RELEASE RISKS",
+          "type": "ongoing",
+          "optionality": "SHOULD",
+          "status": "GREEN",
+          "score": 3.0,
+          "weight": 0.5,
+          "detail": "No significant release risks reported — only low/medium risks at low probability.",
+          "gaps": "None",
+          "fix": "None",
+          "key_facts": "Answer A: No significant risks."
+        }
+      ],
+      "metric_state_patch": {
+        "metrics": {
+          "m1.1": { "reporting_status": "reported" },
+          "m1.2": { "reporting_status": "reported" },
+          "m1.3": { "reporting_status": "reported" },
+          "m1.5": { "reporting_status": "reported" },
+          "m1.7": { "reporting_status": "reported" },
+          "m1.8": { "reporting_status": "reported" }
+        }
+      },
+      "jira_query_registry_patch": {}
+    },
+    {
+      "group_key": 2,
+      "group_id": "testing_delivery_status",
+      "group": "Testing Delivery Status",
+      "weight": 1.0,
+      "group_score": 2.67,
+      "group_status": "GREEN",
+      "group_conclusion": "Testing delivery status is GREEN. Testing is on track against the release timeline with no bottlenecks. QA capacity is slightly imbalanced but manageable at current pace.",
+      "metric_results": [
+        {
+          "metric_id": "m2.2",
+          "name": "TESTING PROGRESS VS RELEASE TIMELINE",
+          "type": "ongoing",
+          "optionality": "SHOULD",
+          "status": "GREEN",
+          "score": 3.0,
+          "weight": 1.0,
+          "detail": "Testing is on track — forecasted finish date (with buffer) falls before the release date.",
+          "gaps": "None",
+          "fix": "None",
+          "key_facts": "Testing finish date with buffer <= release date. On track per forecast provided."
+        },
+        {
+          "metric_id": "m2.3",
+          "name": "TESTING (REGULAR) BOTTLENECKS",
+          "type": "both",
+          "optionality": "SHOULD",
+          "status": "GREEN",
+          "score": 3.0,
+          "weight": 1.0,
+          "detail": "No active or recurring testing bottlenecks reported. Testing flow is smooth.",
+          "gaps": "None",
+          "fix": "None",
+          "key_facts": "Answer A: No bottlenecks or only minor ones with quick workarounds."
+        },
+        {
+          "metric_id": "m2.4",
+          "name": "QA CAPACITY NEEDS",
+          "type": "ongoing",
+          "optionality": "MUST",
+          "status": "AMBER",
+          "score": 2.0,
+          "weight": 1.0,
+          "detail": "Dev:QA ratio is 2.33:1 with QA share of ~30%, falling in the AMBER range (>2:1 and ≤3:1).",
+          "gaps": "QA share at 30% is below the recommended 33% threshold. Risk of regression and edge/negative cases being squeezed near release.",
+          "fix": "Rebalance workload distribution or source short-term QA capacity specifically for regression and edge-case coverage.",
+          "key_facts": "Devs: 7, QAs: 3, Dev:QA = 2.33:1, QA share = 30%"
+        }
+      ],
+      "metric_state_patch": {
+        "metrics": {
+          "m2.2": { "reporting_status": "reported" },
+          "m2.3": { "reporting_status": "reported" },
+          "m2.4": { "reporting_status": "reported" }
+        }
+      },
+      "jira_query_registry_patch": {}
+    }
+  ]
+}
