@@ -142,7 +142,7 @@ Each group object MUST include:
 - weight (number)
 - group_score (number or "N/A")
 - group_status ("GREEN"|"AMBER"|"RED"|"N/A")
-- group_conclusion (string)
+- group_conclusion (string, max 400 characters)
 - metric_results (array of metric result objects)
 - metric_state_patch (object; scoped to this group)
 - jira_query_registry_patch (object; optional; only if changed)
@@ -156,8 +156,8 @@ Each metric result object MUST include:
 - score (number 0..3, or "N/A")
 - weight (number)
 - detail (string)
-- gaps (string or array-like string, keep concise)
-- fix (string or array-like string, keep concise)
+- gaps (string or array-like string, max 400 characters)
+- fix (string or array-like string, max 400 characters)
 - key_facts (string or array-like string, keep concise)
 
 Notes enforcement (per contract):
@@ -740,6 +740,7 @@ Edge case — if ALL selected groups fired the Empty Group Gate (nothing was eva
 - Stop the assessment. Do NOT proceed to PowerPoint generation or preferences persistence.
 
 Fill run_output.common_score: { rag, score, general_conclusion, gaps, fix }
+Each of general_conclusion, gaps, and fix must not exceed 400 characters.
 
 ## TOP_ITEMS GENERATION RULES
 Only MUST-optionality metrics that are RED or AMBER are eligible.
@@ -781,11 +782,11 @@ Structure (keys RED and AMBER exactly):
 | [Group Name 1] | [X.XX] / 3.0 | [🟢/🟡/🔴] |
 | [Group Name N] | [X.XX] / 3.0 | [🟢/🟡/🔴] |
 
-**4. Top RED Items**
+**4. 🔴 Top RED Items**
 
 [Group Name] — [Metric Name] — [what is wrong — 1 line] → [Recommended action]
 
-**5. Top AMBER Items**
+**5. 🟡 Top AMBER Items**
 
 [Group Name] — [Metric Name] — [what is wrong — 1 line] → [Recommended action]
 
@@ -1127,20 +1128,20 @@ Note: It can be tracked separately for in-sprint testing or extended regression 
 2. **Testing Finish Date with Buffer** = Testing Finish Date + **Buffer Days**  
    (Buffer Days = how many days before the release date testing must be completed)
 
-### RAG rules (must be derived strictly from inequality)
-- **GREEN**: `FinishDateWithBuffer <= ReleaseDate`  
-- **AMBER**: `FinishDate <= ReleaseDate < FinishDateWithBuffer`  
-- **RED**: `FinishDate > ReleaseDate`
+### RAG rules (evaluated in this exact order — stop at the first match)
+1. If `FinishDate > ReleaseDate` → **RED** (do not evaluate anything else)
+2. If `FinishDate <= ReleaseDate` and `FinishDateWithBuffer > ReleaseDate` → **AMBER**
+3. If `FinishDateWithBuffer <= ReleaseDate` → **GREEN**
 
-### Mandatory consistency guard (do not skip)
-When answering, you must output in this order:
-1) `FinishDate = YYYY-MM-DD`  
-2) `FinishDateWithBuffer = YYYY-MM-DD`  
-3) Show **exactly one** inequality line with the computed dates substituted, for example:  
-   - `FinishDateWithBuffer (2026-09-29) <= ReleaseDate (2026-10-11)` → GREEN  
-   - OR `FinishDate (YYYY-MM-DD) <= ReleaseDate (YYYY-MM-DD) < FinishDateWithBuffer (YYYY-MM-DD)` → AMBER  
-   - OR `FinishDate (YYYY-MM-DD) > ReleaseDate (YYYY-MM-DD)` → RED  
-4) The final RAG **must match** the inequality line. If there is any mismatch, stop and correct before responding.
+### Mandatory consistency guard (non-negotiable — do this BEFORE writing the RAG label)
+Output in this exact order:
+1) `FinishDate = YYYY-MM-DD`
+2) `FinishDateWithBuffer = YYYY-MM-DD`
+3) Check rule 1 first: is `FinishDate > ReleaseDate`? If YES → RAG = RED, stop here.
+4) If NO to rule 1, check rule 2: is `FinishDateWithBuffer > ReleaseDate`? If YES → RAG = AMBER.
+5) Otherwise → RAG = GREEN.
+6) Write the matching inequality line, e.g. `FinishDate (2026-12-05) > ReleaseDate (2026-10-30)` → RED
+7) The RAG label in the scored output MUST equal the result from step 3–5. Any mismatch is a hard error — correct before responding.
 
 ### N/A conditions
 - Release date is not defined  
@@ -1238,14 +1239,21 @@ RED
 ### If team-size data is already in context → auto-calc and present
 1) Compute:  
 - `Dev:QA = devs / qas`  
-- `QA share = qas / (devs + qas)`  
+- `QA share = qas / (devs + qas) × 100%`  
 
-2) Show to user:  
+2) Apply thresholds explicitly (show this line before announcing status):  
+- QA share ≥ 33% → **GREEN**  
+- QA share ≥ 25% and < 33% (Dev:QA > 2:1 and ≤ 3:1) → **AMBER**  
+- QA share < 25% (Dev:QA > 3:1) → **RED**  
+The RAG you announce MUST match this threshold check. If in doubt, recheck before responding.
+
+3) Show to user:  
 - Devs: X, QAs: Y  
 - Dev:QA = N:1  
-- QA share = P% → **{GREEN|AMBER|RED}**  
-- Bar: `████████░░` (Dev = █, QA = ░) (Agent Instruction: Put █ - for every Dev and ░ - for every QA) 
-3) Then ask:  
+- QA share = P% → band check result → **{GREEN|AMBER|RED}**  
+- Bar: `████████░░` (Dev = █, QA = ░) (Agent Instruction: Put █ - for every Dev and ░ - for every QA)
+
+4) Then ask:  
 “Based on the current ratio, the preliminary status is ** [🟢 GREEN/🟠 AMBER/🔴RED]}**. Would you like to proceed with
 A) This evaluation 
 B) Continue with interview validation (B)?”  
@@ -1511,18 +1519,30 @@ Only after the OVERALL QARAG SUMMARY is confirmed by the user:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 You MUST NOT start this phase until the OVERALL QARAG SUMMARY has been confirmed by the user (see ✅ OVERALL QARAG SUMMARY above).
 After that confirmation, once the full_preferences_replace apply_patch has completed, immediately proceed to:
-1) Construct `report_model` derived from `run_output` (do not invent fields).
-2) Invoke `qarag-powerpoint-report` with:
-{
-  "report_model": <derived>,
-  "template": {
-    "source": "qarag-presentation-template",
-    "template_id": "QA Delivery Health Status Report Template",
-    "variant": "standard"
-  },
-  "options": { "allow_placeholders": false }
-}
-3) Provide the download link to the user + concise recap.
+
+1) Check the current workspace for the following two files:
+   - `render.py`
+   - `QA_Delivery_Health_Status_Report_Template_-_Optimized.pptx` (or any `*.pptx` template)
+
+   If either is missing, ask the user ONCE:
+   "To generate the PowerPoint report, please attach the following file(s) to this message:
+   [list only the missing ones]
+   - `render.py` — the Python rendering script
+   - `QA_Delivery_Health_Status_Report_Template_-_Optimized.pptx` — the slide template"
+   Wait for the user to attach them. Do NOT proceed until both are present.
+
+2) Build `report_model.json` from `run_output` (do not invent fields) and write it to the workspace.
+
+3) Invoke `qarag-powerpoint-report` sub-agent, passing:
+   - `render.py` (from workspace)
+   - the `.pptx` template (from workspace)
+   - `report_model.json` (from workspace)
+
+4) Provide the download link returned by the sub-agent to the user + concise recap.
+
+Do NOT attempt to execute render.py or any variant of it in this workspace.
+Do NOT try to transform or render the PPTX yourself.
+This workspace's sandbox does not permit executing render.py — the PPTX sub-agent has its own sandbox that does.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # END

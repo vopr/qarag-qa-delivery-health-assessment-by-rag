@@ -8,14 +8,19 @@ the deck from scratch.
 
 # Required Inputs — Ask Immediately
 
-**Before doing anything else**, check that both of the following files are present in
-the conversation or attached files:
+**Before doing anything else**, check which of the following are present:
 
-- `render.py` — the Python rendering script
-- A `*.pptx` file — the PowerPoint template
+- `render.py` — the Python rendering script (must be an attached/uploaded file)
+- A `*.pptx` file — the PowerPoint template (must be an attached/uploaded file)
+- `report_model` data — either as an attached `report_model.json` file **or** as a JSON
+  object passed inline in the invocation message from the parent agent
 
-If either is missing, stop and ask the user to provide them now. Do not proceed until
-both are available.
+If `render.py` or the `*.pptx` template is missing, ask the user to attach them now.
+Do not proceed until both are present.
+
+`report_model` is **never** requested from the user — it is always provided either as an
+attached file or inline by the invoking agent. If it is absent from both sources, report
+`status: "NEEDS_DATA"` and list the missing fields.
 
 ---
 
@@ -95,6 +100,8 @@ unknown numeric → `"N/A"`. Never invent a numeric value under any circumstance
    project = {"name": gpi["project_name"], "reporting_period": gpi["reporting_period"]}
    user = {"name": gpi["user_name"]}
    last_run_at = gpi["last_run_at"].split("T")[0]
+   safe_period = re.sub(r'[^A-Za-z0-9._-]', '-', gpi["reporting_period"])
+   output_filename = f"QA-Delivery-Health-Status-Report-{safe_period}-{last_run_at}.pptx"
 
    jira_connected = gpi.get("integrations", {}).get("jira", {}).get("connected", False)
    metric_type_raw = sel.get("metric_type", "both")
@@ -108,12 +115,14 @@ unknown numeric → `"N/A"`. Never invent a numeric value under any circumstance
        "metrics_types_in_scope": mtype,
    }
 
-   entryinfo = (
-       f"Project: {gpi['project_name']} | Period: {gpi['reporting_period']} | "
-       f"Timezone: {gpi.get('project_timezone','N/A')} | "
-       f"Dev: {facts['dev']} | QA: {facts['qa']} | "
-       f"Cadence: {facts['cadence']} | Jira: {facts['jira_connected']}"
-   )
+   entryinfo = "\n".join([
+       f"Project: {gpi['project_name']}",
+       f"Period: {gpi['reporting_period']}",
+       f"Timezone: {gpi.get('project_timezone', 'N/A')}",
+       f"Dev: {facts['dev']} | QA: {facts['qa']}",
+       f"Cadence: {facts['cadence']} | Jira: {facts['jira_connected']}",
+       f"{mtype}",
+   ])
 
    conclusion_parts = [v for k in ("general_conclusion", "gaps", "fix") if (v := cs.get(k))]
    common = {
@@ -126,13 +135,9 @@ unknown numeric → `"N/A"`. Never invent a numeric value under any circumstance
        rows = []
        for m in metric_results:
            kf = m.get("key_facts", "")
-           sc = m.get("score", "")
-           st = m.get("status", "")
            nm = m.get("name", "")
            if kf and re.search(r"\d", str(kf)):
                rows.append({"label": nm, "value": kf})
-           elif sc not in ("N/A", None, "") and re.search(r"\d", str(sc)):
-               rows.append({"label": nm, "value": f"Score: {sc} ({st})"})
        return {"detail": rows, "gaps": []}
 
    def build_findings(metric_results):
@@ -185,25 +190,27 @@ unknown numeric → `"N/A"`. Never invent a numeric value under any circumstance
    # ── 4. Render ────────────────────────────────────────────────────────────
    sys.path.insert(0, os.getcwd())
    import render as render_mod
-   render_mod.render("template.pptx", "render_model_transformed.json", "output.pptx")
+   render_mod.render("template.pptx", "render_model_transformed.json", output_filename)
    print("RENDER_DONE")
 
    # ── 5. QA ────────────────────────────────────────────────────────────────
-   with zipfile.ZipFile("output.pptx", "r") as z:
+   with zipfile.ZipFile(output_filename, "r") as z:
        names = z.namelist()
        assert "ppt/slides/slide1.xml" in names
        bad = ["[TOP_", "[RAG STATUS]", "[n.nn]", "[Group Metric", "G[N]"]
        issues = [f"{tok} in {n}" for n in names if n.startswith("ppt/slides/slide") and n.endswith(".xml")
                  for tok in bad if tok in z.read(n).decode("utf-8", errors="replace")]
        print("[OK]" if not issues else f"[WARN] {issues}")
-       print(f"[OK] {len(names)} parts, {os.path.getsize('output.pptx'):,} bytes")
+       print(f"[OK] {len(names)} parts, {os.path.getsize(output_filename):,} bytes")
    ```
 
    If the script output does not contain `RENDER_DONE`, treat it as a hard error — report
    the exact script output to the user and stop.
 
 3. Run QA checks (embedded in the script above) against `output.pptx`.
-4. **The final `output.pptx` is already in the workspace directory.** Confirm its path to the user.
+4. **Always call `execute_workspace_script` with `export_files: [output_filename, "text_summary.md"]`**
+   where `output_filename` is the dynamic value built in the script (`QA-Delivery-Health-Status-Report-{period}-{date}.pptx`).
+   Never skip `export_files` — without it the files exist in the workspace but are not surfaced as downloadable links in the chat.
 5. Return per Output Format.
 
 ---
@@ -278,9 +285,12 @@ Never invent numeric values or dates.
 # Output Format
 
 Return:
-1. The path to the saved `output.pptx` in the workspace directory.
-2. The path to the saved `text_summary.md` in the workspace directory.
+1. A **clickable download link** for the rendered PPTX (named `QA-Delivery-Health-Status-Report-{reporting_period}-{last_run_at}.pptx`) — sourced from the `export_files`
+   sandbox URL returned by `execute_workspace_script`. Always present this as a link, not just a path.
+2. A **clickable download link** for `text_summary.md` — same mechanism.
 3. If placeholders are refused and critical data is missing: `status: "NEEDS_DATA"`,
    `missing_fields: [...]` — do not render.
+
+Do not add any inline summary, snapshot, or narrative table to the response. The `text_summary.md` download link is the sole narrative output.
 
 Never invent metric values. Never rebuild the deck from a blank presentation.
