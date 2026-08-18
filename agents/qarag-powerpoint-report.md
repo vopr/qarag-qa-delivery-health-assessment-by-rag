@@ -121,7 +121,6 @@ unknown numeric → `"N/A"`. Never invent a numeric value under any circumstance
        f"Timezone: {gpi.get('project_timezone', 'N/A')}",
        f"Dev: {facts['dev']} | QA: {facts['qa']}",
        f"Cadence: {facts['cadence']} | Jira: {facts['jira_connected']}",
-       f"{mtype}",
    ])
 
    conclusion_parts = [v for k in ("general_conclusion", "gaps", "fix") if (v := cs.get(k))]
@@ -177,6 +176,19 @@ unknown numeric → `"N/A"`. Never invent a numeric value under any circumstance
        "groups": groups,
        "top_items": {"red": flatten_top(top.get("RED", [])), "amber": flatten_top(top.get("AMBER", []))},
    }
+
+   def _esc(s):
+       if isinstance(s, str):
+           return s.replace('&', '&amp;').replace('<', '&lt;')
+       return s
+
+   def _esc_deep(obj):
+       if isinstance(obj, str): return _esc(obj)
+       if isinstance(obj, list): return [_esc_deep(i) for i in obj]
+       if isinstance(obj, dict): return {k: _esc_deep(v) for k, v in obj.items()}
+       return obj
+
+   render_model = _esc_deep(render_model)
 
    with open("render_model_transformed.json", "w", encoding="utf-8") as f:
        json.dump(render_model, f, indent=2, ensure_ascii=False)
