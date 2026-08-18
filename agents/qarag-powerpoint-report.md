@@ -84,7 +84,7 @@ unknown numeric → `"N/A"`. Never invent a numeric value under any circumstance
    - Runs QA checks (see below)
 
    ```python
-   import json, os, zipfile, re, sys
+   import json, os, zipfile, re, sys, math, shutil
 
    # ── 1. Load source model ─────────────────────────────────────────────────
    with open("report_model.json", encoding="utf-8") as f:
@@ -214,6 +214,55 @@ unknown numeric → `"N/A"`. Never invent a numeric value under any circumstance
                  for tok in bad if tok in z.read(n).decode("utf-8", errors="replace")]
        print("[OK]" if not issues else f"[WARN] {issues}")
        print(f"[OK] {len(names)} parts, {os.path.getsize(output_filename):,} bytes")
+
+   # ── 6. Patch slide 2 card layout ────────────────────────────────────────
+   def _patch_slide2(pptx_path, n_groups):
+       SLIDE_W   = 12192000
+       MARGIN_X  = 300000
+       CARD_TOP  = 1900000
+       CARD_BOT  = 6200000
+       ROW_GAP   = 250000
+       GAP_RATIO = 0.1433
+
+       cols = min(n_groups, 4)
+       rows = math.ceil(n_groups / cols)
+       avail_w = SLIDE_W - 2 * MARGIN_X
+       target_cols = max(3, cols)
+       card_w = int(avail_w / (target_cols + GAP_RATIO * (target_cols - 1)))
+       gap_x  = int(card_w * GAP_RATIO)
+       avail_h = CARD_BOT - CARD_TOP
+       card_h  = int((avail_h - ROW_GAP * (rows - 1)) / rows)
+       row_w   = card_w * cols + gap_x * (cols - 1)
+       start_x = MARGIN_X + (avail_w - row_w) // 2
+       font_reduce = 200 * ((rows - 1) + max(0, cols - 3))
+
+       with zipfile.ZipFile(pptx_path, "r") as zin:
+           entries = {item.filename: zin.read(item.filename) for item in zin.infolist()}
+
+       s2 = entries["ppt/slides/slide2.xml"].decode("utf-8")
+       all_blocks = re.findall(r"<p:sp>[\s\S]*?</p:sp>", s2)
+       cards = [b for b in all_blocks if 'name="Category Card"' in b]
+
+       for i, card in enumerate(cards):
+           row, col = divmod(i, cols)
+           nx = start_x + col * (card_w + gap_x)
+           ny = CARD_TOP + row * (card_h + ROW_GAP)
+           p = re.sub(r'<a:off x="\d+" y="\d+"', f'<a:off x="{nx}" y="{ny}"', card)
+           p = re.sub(r'(<a:xfrm[^>]*>[\s\S]*?<a:off[^/]*/>\s*)<a:ext cx="\d+" cy="\d+"',
+                      lambda m, w=card_w, h=card_h: m.group(1) + f'<a:ext cx="{w}" cy="{h}"', p)
+           p = re.sub(r'sz="(\d+)"',
+                      lambda m, r=font_reduce: f'sz="{max(800, int(m.group(1)) - r)}"', p)
+           p = re.sub(r'<a:normAutofit[^/]*/>', '<a:normAutofit fontScale="100000"/>', p)
+           s2 = s2.replace(card, p, 1)
+
+       entries["ppt/slides/slide2.xml"] = s2.encode("utf-8")
+       tmp = pptx_path + ".layout.tmp"
+       with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+           for fname, data in entries.items():
+               zout.writestr(fname, data)
+       shutil.move(tmp, pptx_path)
+
+   _patch_slide2(output_filename, len(gms))
    ```
 
    If the script output does not contain `RENDER_DONE`, treat it as a hard error — report

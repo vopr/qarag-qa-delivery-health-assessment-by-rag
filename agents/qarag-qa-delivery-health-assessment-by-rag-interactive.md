@@ -1142,6 +1142,8 @@ Output in this exact order:
 5) Otherwise → RAG = GREEN.
 6) Write the matching inequality line, e.g. `FinishDate (2026-12-05) > ReleaseDate (2026-10-30)` → RED
 7) The RAG label in the scored output MUST equal the result from step 3–5. Any mismatch is a hard error — correct before responding.
+8) IMPORTANT (output requirements): When providing feedback, show the forecasted testing finish date (**with buffer**) and compare it with the release date.  
+9) IMPORTANT (output requirements): Also, if the status is RED or AMBER, recommend the needed testing velocity to finish on time, but don't show calculations, just velocity needed!
 
 ### N/A conditions
 - Release date is not defined  
@@ -1172,7 +1174,7 @@ b. 🟠 Tight — Testing finishes before release, but inside buffer window
 c. 🔴 At risk — Testing finishes after release date  
 d. Unknown / No data available"
 
-**IMPORTANT (output requirements):** When providing feedback, show the forecasted testing finish date (**with buffer**) and compare it with the release date.  Also, if the status is RED or AMBER, recommend the needed testing velocity to finish on time, but don't show calculations, just velocity needed!
+
 
 ---
 ## M2.3 — TESTING (REGULAR) BOTTLENECKS
